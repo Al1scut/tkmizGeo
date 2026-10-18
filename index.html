@@ -148,6 +148,9 @@ button:hover{filter:brightness(1.15)}
 
   <h2>シード埋め込み（画像全体に分散）</h2>
   <label class="chk"><input type="checkbox" id="codeOn">シードを図形群に刻む</label>
+  <div class="row"><label>符号の方式</label><span></span>
+    <select id="codeVer" style="grid-column:1/3"><option value="v2" selected>新：自然符号（線の向き・環の数・環の模様と向き。見た目は普通の生成と同じ）</option><option value="v1">旧：環にバイナリ（同期弧つき、分散）</option></select></div>
+  <div class="note" style="color:var(--mute);font-size:12px;margin:2px 0 6px">新方式で使う設定: 短点の長さ・子図形の大きさ・符号の線の太さ。それ以外の符号設定は旧方式用です。</div>
   <label class="chk"><input type="checkbox" id="codeSettings">設定も一緒に刻む（既定値からの差分）</label>
   <div class="row"><label>短点の長さ px</label><span class="val" id="v_codeUnit"></span><input type="range" id="codeUnit" min="3" max="30" step="0.5" value="5"></div>
   <div class="row"><label>1図形に載せる最小ビット数</label><span class="val" id="v_codeMin"></span><input type="range" id="codeMin" min="4" max="64" value="8"></div>
@@ -163,6 +166,8 @@ button:hover{filter:brightness(1.15)}
   <div id="codeInfo" style="color:var(--mute);margin-top:4px;white-space:pre-wrap"></div>
 
   <h2>デコード</h2>
+  <div class="row"><label>読み方</label><span></span>
+    <select id="decVer" style="grid-column:1/3"><option value="auto" selected>自動（新→旧の順に試す）</option><option value="v2">新方式のみ</option><option value="v1">旧方式のみ</option></select></div>
   <div class="btns"><button id="decSelf">表示中の画像を読む</button><button id="decFileBtn">画像ファイルを読む</button></div>
   <input type="file" id="decFile" accept="image/*" hidden>
   <div class="note" style="color:var(--mute);font-size:12px;margin:4px 0">画像全体から符号を持つ図形を探して読みます。見落とした図形があれば、その中心をクリックすると追加で読みます。</div>
@@ -206,7 +211,7 @@ function cfg(){
     mWordP:n('mWordP')/100,mLw:n('mLw'),mScale:n('mScale')/100,mRound:c('mRound'),mCap:c('mCap'),mText:$('mText').value,
     shapes:['circle','rings','semi','mix','square','dsq'].filter(s=>c('s_'+s)),
     tris:[['triCore','core'],['triRing','ring']].filter(t=>c('s_'+t[0])).map(t=>t[1]),pTri:n('pTri')/100,triWhich:$('triWhich').value,
-    noCross:c('noCross'),codeOn:c('codeOn'),codeSettings:c('codeSettings'),codeUnit:n('codeUnit'),codeMin:n('codeMin'),codeMax:n('codeMax'),codeConvert:c('codeConvert'),codeFit:c('codeFit'),codeWhole:c('codeWhole'),codeScale:n('codeScale'),codeOrient:c('codeOrient'),
+    noCross:c('noCross'),codeOn:c('codeOn'),codeSettings:c('codeSettings'),codeUnit:n('codeUnit'),codeMin:n('codeMin'),codeMax:n('codeMax'),codeConvert:c('codeConvert'),codeFit:c('codeFit'),codeVer:$('codeVer').value,codeWhole:c('codeWhole'),codeScale:n('codeScale'),codeOrient:c('codeOrient'),
     codeGuard:c('codeGuard'),codeLw:n('codeLw'),codeRootR:n('codeRootR'),pAttach:n('pAttach')/100,attachIn:n('attachIn')/100,
     bridgeOn:c('bridgeOn'),pBridge:n('pBridge')/100,pDrop:n('pDrop')/100,
     sem:{state:'',work:'',core:'',motion:''}};
@@ -451,7 +456,7 @@ function parsePacket(bits){
 }
 // 既定値（ページ読み込み時）からの差分を文字列化
 let DEFAULTS={};
-const SKIP_IDS=['seed','lockSeed','live','budget','decFile','codeSettings'];
+const SKIP_IDS=['seed','lockSeed','live','budget','decFile','codeSettings','decVer'];
 function ctrlList(){return[...document.querySelectorAll('#side input[id],#side select[id]')].filter(el=>!SKIP_IDS.includes(el.id)&&el.type!=='file')}
 function ctrlVal(el){return el.type==='checkbox'?(el.checked?'1':'0'):el.value}
 function settingsDiff(){return ctrlList().map((el,i)=>[el,i]).filter(([el])=>ctrlVal(el)!==DEFAULTS[el.id]).map(([el,i])=>i.toString(36)+'='+ctrlVal(el)).join(';')}
@@ -517,6 +522,35 @@ function codeInit(o,root){
   const packet=makePacket(seed,settings);
   return{packet,total:packet.length,ptr:0,cover:new Uint16Array(packet.length),list:[],root,settings:!!settings};
 }
+// ===== 新方式（自然符号）=====
+// 使う情報: 各多重円の「環の数」「各模様環の始まりの向き」「長点/短点」「要素間の間隔の長短」
+//           ＋各多重円から出る線の「向き（12方向それぞれの有無）」。読む順は中心からの幅優先探索。
+const Q2=12;
+function v2Params(o){const lw=o.lw,lwc=o.lw*o.codeLw,u=o.codeUnit;
+  const M=Math.max(4*Math.max(lw,lwc),8,1.5*u);const sp=Math.max(lwc*3.5,lw*3.5,u*1.2,6);const r1=Math.max(lw*4,lwc*2,6);
+  return{lw,lwc,u,M,sp,r1,rmin:r1+5*sp+lwc,start:lwc/2+lw*1.5}}
+function v2Reader(packet,seed){const fr=mulberry(hashStr(seed+'#fill'));const D={i:0,used:{ring:0,shape:0,line:0},
+  bit(ch){D.used[ch]++;const b=D.i<packet.length?packet[D.i]:(fr()<.5?1:0);D.i++;return b},
+  int(n,ch){let v=0;for(let k=0;k<n;k++)v=v*2+D.bit(ch);return v}};return D}
+function makeCarrierV2(n,o,D,P){
+  const k=3+D.int(2,'shape');
+  if(n.r<P.r1+(k-1)*P.sp)n.r=P.r1+(k-1)*P.sp;
+  const r1=Math.max(P.r1,n.r*0.2),st=(n.r-r1)/(k-1);
+  const rings=[];
+  for(let i=0;i<k;i++){
+    const r=r1+i*st;
+    if(i<2){rings.push({r,a0:0,span:TAU,segs:null});continue}
+    const sct=D.int(3,'shape');const t0=sct*Math.PI/4+Math.PI/8;const L=r*TAU,u=P.u;const segs=[];let pos=0;
+    while(true){
+      const e=D.bit('ring');const len=e?3*u:u;segs.push({a0:t0+pos/r,a1:t0+(pos+len)/r});pos+=len;
+      if(L-pos>=12*u){pos+=D.bit('ring')?3*u:u}else break;
+    }
+    rings.push({r,a0:0,span:TAU,segs,code:true});
+  }
+  rings.reverse();
+  n.type='rings';n.ringList=rings;n.r=rings[0].r;n.rot=0;n.fill=false;n.tri=null;n.bridges=[];n.core=undefined;n.v2={k};
+  return n;
+}
 function segHitsCircle(x1,y1,x2,y2,c,rad){const dx=x2-x1,dy=y2-y1,L=dx*dx+dy*dy||1;let t=((c.x-x1)*dx+(c.y-y1)*dy)/L;t=Math.max(0,Math.min(1,t));return Math.hypot(x1+t*dx-c.x,y1+t*dy-c.y)<rad}
 
 // 意味の指定を中央の個体に反映（専用乱数。指定なしなら何もしない）
@@ -559,12 +593,61 @@ function* generate(o,g){
   const addNode=n=>{nodes.push(n);gridAdd(n,0);if(n.r>MAXR)MAXR=n.r};
   const cx=o.W/2,cy=o.H/2;
   const root=makeNode(cx,cy,rnd(o.rootMin,o.rootMax),0,o,true);
-  const C=o.codeOn?codeInit(o,root):null;g.code=C;
-  if(C)makeCarrier(root,o,C);else applySemantics(root,o);
+  const V2=o.codeOn&&o.codeVer==='v2';
+  const C=(o.codeOn&&!V2)?codeInit(o,root):null;g.code=C;
+  let C2=null,P2=null,D2=null;
+  if(V2){P2=v2Params(o);const pk=makePacket($('seed').value||'0',o.codeSettings?settingsDiff():'');D2=v2Reader(pk,$('seed').value||'0');
+    C2={list:[],packet:pk,D:D2,settings:o.codeSettings};g.code2=C2;
+    root.type='rings';if(root.r<P2.rmin)root.r=P2.rmin;makeCarrierV2(root,o,D2,P2);root.pslot=-1;C2.list.push(root)}
+  if(C)makeCarrier(root,o,C);else if(!V2)applySemantics(root,o);
+  const guardList=()=>C2?C2.list:(C?C.list:[]);
+  const guardM=()=>C2?P2.M+o.lw*2:(o.codeUnit+o.lw*2);
+  const nearCarrier=(x,y,r,skip)=>{if(!C2)return false;for(const c of C2.list){if(c===skip)continue;if(Math.hypot(c.x-x,c.y-y)<c.r+P2.M+r+o.gap)return true}return false};
+  function* processV2(p){
+    const pres=[];for(let q=0;q<Q2;q++)pres[q]=q===p.pslot?0:D2.bit('line');
+    for(let q=0;q<Q2;q++){
+      if(!pres[q])continue;
+      const a=q*TAU/Q2,ca=Math.cos(a),sa=Math.sin(a);
+      const sc=Math.pow(o.shrink,p.depth);
+      const len=Math.max(rnd(o.lenMin,o.lenMax)*sc,P2.M*1.6+o.lw*4);
+      const sr=p.r+P2.start;const sx=p.x+ca*sr,sy=p.y+sa*sr;
+      const wantNode=nodes.length<o.maxNodes&&R()<o.pNode;
+      const cr=Math.max(rnd(o.rMin,o.rMax)*sc*o.codeScale,P2.rmin);
+      const accent=R()<o.pAcc;
+      const segOK=(x1,y1,x2,y2)=>{for(const c of C2.list){if(c===p)continue;if(segHitsCircle(x1,y1,x2,y2,c,c.r+P2.M+o.lw*2))return false}return true};
+      let done=false;
+      if(wantNode){
+        const dist=p.r+len+cr,ex=p.x+ca*dist,ey=p.y+sa*dist;
+        const ok=!(o.inBounds&&(ex<cr||ey<cr||ex>o.W-cr||ey>o.H-cr))&&!overlaps(nodes,ex,ey,cr+P2.M,o.gap,null)&&!nearCarrier(ex,ey,cr,null)
+          &&segOK(sx,sy,ex-ca*cr,ey-sa*cr)&&!circleHitsLines(ex,ey,cr+P2.M+o.lw*2,null);
+        if(ok){
+          const n=makeNode(ex,ey,cr,p.depth+1,o);
+          if(n.type==='rings'||n.type==='mix'||n.tri){n.tri=null;makeCarrierV2(n,o,D2,P2);n.pslot=(q+Q2/2)%Q2;C2.list.push(n)}
+          const er=n.v2?n.r+P2.start:(o.lineFromEdge?edgeDist(n,a+Math.PI):0);
+          const ln={x1:sx,y1:sy,x2:n.x-ca*er,y2:n.y-sa*er,accent,child:true,keep:true};pushLine(ln);
+          addNode(n);queue.push(n);yield {k:"l",v:ln};yield {k:"n",v:n};done=true;
+        }
+      }
+      if(!done){
+        let L=null;
+        for(const f of[1,.7,.45,.25,0]){
+          const l=Math.max(len*f,P2.M*1.2+o.lw*4);const lx=p.x+ca*(sr+l),ly=p.y+sa*(sr+l);
+          if(o.inBounds&&(lx<4||ly<4||lx>o.W-4||ly>o.H-4))continue;
+          if(overlaps(nodes,lx,ly,2,0,p))continue;if(!segOK(sx,sy,lx,ly))continue;L=l;break;
+        }
+        if(L==null)L=P2.M*1.2+o.lw*4;
+        const lx=p.x+ca*(sr+L),ly=p.y+sa*(sr+L);
+        const ln={x1:sx,y1:sy,x2:lx,y2:ly,accent,keep:true};pushLine(ln);yield {k:"l",v:ln};
+        if(R()<o.pDot){const d={x:lx,y:ly,r:Math.max(2,o.lw*rnd(1.5,3)),accent};dots.push(d);yield {k:"d",v:d}}
+      }
+    }
+  }
   addNode(root);yield {k:"n",v:root};
   const queue=[root];let qi=0;
-  while(qi<queue.length&&nodes.length<o.maxNodes&&lines.length<o.maxLines){
+  while(qi<queue.length){
     const p=queue[qi++];
+    if(p.v2){yield* processV2(p);continue}
+    if(nodes.length>=o.maxNodes||lines.length>=o.maxLines){if(V2)continue;break}
     if(p.depth>=o.maxDepth)continue;
     if(p!==root&&R()>o.pBranch)continue;
     let cnt=rint(o.branchMin,o.branchMax);
@@ -609,6 +692,7 @@ function* generate(o,g){
           if(o.inBounds&&(ax<cr||ay<cr||ax>o.W-cr||ay>o.H-cr))continue;
           if(o.noOverlap&&overlaps(nodes,ax,ay,cr,o.gap,p))continue;
           if(C&&o.codeGuard&&circleHitsLines(ax,ay,cr+o.codeUnit+o.lw*2,null))continue;
+          if(C2&&nearCarrier(ax,ay,cr,null))continue;
           if(edge>=0)freeEdges.splice(freeEdges.indexOf(edge),1);
           const n=makeNode(ax,ay,cr,p.depth+1,o);if(C)makeCarrier(n,o,C);
           const d1=edgeDist(p,a,true)+edgeDist(n,a+Math.PI,true)*(1-o.attachIn);
@@ -622,12 +706,14 @@ function* generate(o,g){
         const margin=wantNode?cr:4;
         if(o.inBounds&&(ex<margin||ey<margin||ex>o.W-margin||ey>o.H-margin))continue;
         if(o.lineAvoid&&segHitsNode(nodes,sx,sy,lx,ly,[p]))continue;
-        if(C&&o.codeGuard){const tx=wantNode?ex-Math.cos(a)*cr:lx,ty=wantNode?ey-Math.sin(a)*cr:ly;let hit=false;
-          for(const c of C.list){if(c===p)continue;if(segHitsCircle(sx,sy,tx,ty,c,c.r+o.codeUnit+o.lw*2)){hit=true;break}}
+        if((C&&o.codeGuard)||C2){const tx=wantNode?ex-Math.cos(a)*cr:lx,ty=wantNode?ey-Math.sin(a)*cr:ly;let hit=false;
+          for(const c of guardList()){if(c===p)continue;if(segHitsCircle(sx,sy,tx,ty,c,c.r+guardM())){hit=true;break}}
           if(hit)continue}
+        if(C2&&wantNode&&nearCarrier(ex,ey,cr,null))continue;
         if(o.noCross){const tx=wantNode?ex-Math.cos(a)*cr:lx,ty=wantNode?ey-Math.sin(a)*cr:ly;if(crossesLines(sx,sy,tx,ty))continue}
         // 符号モード: 新しい図形の円に既存の線がかかっていたら置かない
         if(C&&o.codeGuard&&wantNode&&circleHitsLines(ex,ey,cr+o.codeUnit+o.lw*2,null))continue;
+        if(C2&&wantNode&&circleHitsLines(ex,ey,cr+o.lw*2,null))continue;
         if(wantNode&&o.noOverlap&&overlaps(nodes,ex,ey,cr,o.gap,null)){
           if(o.overlapMode==='retry')continue;
           if(o.overlapMode==='skip'){placed=true;break}
@@ -807,13 +893,16 @@ function analyzeAt(cx,cy,at,W,H){
     for(let t=0;t<N;t++){const k=(st+t)%N;if(on[k]){if(!cur)cur={s:t,len:0};cur.len++}else if(cur){runs.push(cur);cur=null}}
     if(cur)runs.push(cur);if(!runs.length){ringBits.push([]);continue}
     const pxPer=TAU*r/N;runs.forEach(x=>x.px=x.len*pxPer);
+    cb.raw=runs.map(x=>({a0:((st+x.s)%N)/N*TAU,px:x.px}));
     const sync=runs.reduce((a,x)=>x.px>a.px?x:a,runs[0]);const u=sync.px/7;const si=runs.indexOf(sync);
     if(syncA==null)syncA=((st+sync.s)%N)/N*TAU;
     const bits=[];
     for(let t=1;t<runs.length;t++){const x=runs[(si+t)%runs.length];if(x.px<u*.45)continue;if(x.px>u*5)break;bits.push(x.px<u*2?0:1)}
     ringBits.push(bits);
   }
-  return{cx,cy,f:[bands[0].r,bands[1].r],codeBands,ringBits,syncA};
+  const hw=pk=>{const ri=Math.round(pk.r);let lo=ri,hi=ri;while(lo>2&&cov[lo-1]>pk.mx*.5)lo--;while(hi+1<cov.length&&cov[hi+1]>pk.mx*.5)hi++;return hi-lo+1};
+  codeBands.forEach(cb=>{if(!cb.raw)cb.raw=[];cb.hw=hw(cb)});
+  return{cx,cy,f:[bands[0].r,bands[1].r],codeBands,ringBits,syncA,lwEst:hw(bands[0]),outerHalf:hw(codeBands[codeBands.length-1])/2,rOut:codeBands[codeBands.length-1].r};
 }
 // 断片を解釈
 function parseChunk(an){
@@ -842,6 +931,92 @@ function findCandidates(m,W,H){
 }
 function decode(){
   if(!DEC.img)return;
+  const ver=$('decVer').value;
+  if(ver!=='v1'){const ok=decodeV2();if(ok||ver==='v2')return}
+  const msg2=ver==='auto'?'（新方式では読めなかったので旧方式で試しました）\n':'';
+  decodeV1();if(msg2)$('decOut').textContent=msg2+$('decOut').textContent;
+}
+// ---- 新方式のデコード ----
+function decodeV2(){
+  const t0=performance.now();
+  const W=DEC.img.width,H=DEC.img.height,m=inkMask(DEC.img);
+  const at=(x,y)=>{x|=0;y|=0;return x>=0&&y>=0&&x<W&&y<H?m[y*W+x]:0};
+  const cands=findCandidates(m,W,H);
+  if(DEC.center)cands.unshift(DEC.center);cands.push([W/2,H/2]);
+  const nodes=[];
+  for(const [x,y] of cands){
+    if(nodes.some(f=>Math.hypot(f.cx-x,f.cy-y)<4))continue;
+    const an=analyzeAt(x,y,at,W,H);if(!an)continue;
+    if(nodes.some(f=>Math.hypot(f.cx-an.cx,f.cy-an.cy)<4))continue;
+    // 新方式の模様環は被覆率が高い。外側の薄い帯（出ていく線など）は除く
+    const kb=[];for(const b of an.codeBands){if(b.mx<0.15)break;kb.push(b)}
+    if(!kb.length)continue;an.codeBands=kb;const lb=kb[kb.length-1];an.rOut=lb.r;an.outerHalf=lb.hw/2;
+    nodes.push(an);
+  }
+  const fail=msg=>{dctx.putImageData(DEC.img,0,0);$('decOut').textContent=`新方式: 多重円 ${nodes.length} 個を検出\n✘ ${msg}`;$('decRegen').disabled=true;DEC.result=null;return false};
+  if(!nodes.length)return fail('多重円が見つかりません');
+  // 中心（＝最初の個体）: 画像中央に最も近い多重円（クリックした点があればそちら）
+  const ref=DEC.center||[W/2,H/2];
+  const root=nodes.reduce((a,n)=>Math.hypot(n.cx-ref[0],n.cy-ref[1])<Math.hypot(a.cx-ref[0],a.cy-ref[1])?n:a);
+  // 単位長 u: 全要素の長さを2群（短点・長点）に分ける
+  const lens=root.codeBands.flatMap(b=>b.raw.map(x=>x.px)).sort((a,b)=>a-b); // 中心の個体の模様だけで推定（他の図形の雑音を避ける）
+  if(lens.length<4)return fail('模様が読めません');
+  let c1=lens[0],c2=lens[lens.length-1];
+  for(let it=0;it<20;it++){const A=[],B=[];for(const v of lens)(Math.abs(v-c1)<Math.abs(v-c2)?A:B).push(v);if(A.length)c1=A.reduce((a,b)=>a+b)/A.length;if(B.length)c2=B.reduce((a,b)=>a+b)/B.length}
+  const u=(c2>c1*2)?(c1+c2/3)/2:c1;
+  const lw=Math.max(1,root.lwEst);
+  const bits=[];
+  const readRings=n=>{
+    const k=n.codeBands.length+2;bits.push(...toBits(Math.max(0,Math.min(3,k-3)),2));
+    for(const b of n.codeBands){
+      const rr=b.raw.slice().sort((x,y)=>x.a0-y.a0);if(!rr.length){bits.push(0,0,0);continue}
+      const gaps=rr.map((x,i)=>{const nx=rr[(i+1)%rr.length];let g=nx.a0-(x.a0+x.px/b.r);if(g<0)g+=TAU;return g*b.r});
+      let ci=0;gaps.forEach((g,i)=>{if(g>gaps[ci])ci=i});
+      const order=[];for(let t=1;t<=rr.length;t++)order.push((ci+t)%rr.length);
+      const st=rr[order[0]].a0;bits.push(...toBits(Math.floor((((st%TAU)+TAU)%TAU)/(Math.PI/4))%8,3));
+      order.forEach((idx,j)=>{bits.push(rr[idx].px>2*u?1:0);if(j<order.length-1)bits.push(gaps[idx]>2*u?1:0)});
+    }
+  };
+  const probe=(n)=>{
+    const rho=n.rOut+n.outerHalf+1.5*lw+3,N=Math.ceil(TAU*rho*3);const on=new Uint8Array(N);
+    for(let k=0;k<N;k++){const a=k/N*TAU;on[k]=at(n.cx+Math.cos(a)*rho,n.cy+Math.sin(a)*rho)}
+    const pres=new Array(Q2).fill(0);let st=on.indexOf(0);if(st<0)return{pres,rho};
+    let cur=-1;for(let t=0;t<=N;t++){const k=(st+t)%N;if(on[k]&&t<N){if(cur<0)cur=t}else if(cur>=0){const mid=((st+(cur+t-1)/2)%N)/N*TAU;pres[Math.round(mid/(TAU/Q2))%Q2]=1;cur=-1}}
+    return{pres,rho};
+  };
+  const visited=new Set([root]);root.pslot=-1;readRings(root);
+  const queue=[root],edges=[];
+  while(queue.length){
+    const p=queue.shift();const {pres,rho}=probe(p);p.pres=pres;
+    for(let q=0;q<Q2;q++){if(q===p.pslot)continue;bits.push(pres[q])}
+    for(let q=0;q<Q2;q++){
+      if(q===p.pslot||!pres[q])continue;
+      const a=q*TAU/Q2,ca=Math.cos(a),sa=Math.sin(a);let best=null,bd=1e9;
+      for(const c of nodes){if(visited.has(c))continue;const dx=c.cx-p.cx,dy=c.cy-p.cy;const along=dx*ca+dy*sa,perp=Math.abs(-dx*sa+dy*ca);
+        if(along<=p.rOut+c.rOut||perp>Math.max(2.5,c.rOut*.08))continue;if(along<bd){bd=along;best=c}}
+      if(!best)continue;
+      // 線が途切れずにつながっているか
+      const e=bd-(best.rOut+best.outerHalf+1.5*lw+2);let ink=0,tot=0;
+      for(let d=rho;d<=e;d+=1){tot++;let h=0;for(const o of[-1,0,1])if(at(p.cx+ca*d-sa*o,p.cy+sa*d+ca*o)){h=1;break}ink+=h}
+      if(!tot||ink/tot<0.9)continue;
+      visited.add(best);best.pslot=(q+Q2/2)%Q2;readRings(best);queue.push(best);edges.push([p,best]);
+    }
+  }
+  const res=parsePacket(bits);DEC.result=res;
+  // 表示
+  dctx.putImageData(DEC.img,0,0);dctx.save();
+  const lwD=Math.max(1.5,W/800);dctx.lineWidth=lwD;
+  for(const [a,b] of edges){dctx.strokeStyle='#ffd34f';dctx.beginPath();dctx.moveTo(a.cx,a.cy);dctx.lineTo(b.cx,b.cy);dctx.stroke()}
+  for(const n of nodes){const on=visited.has(n);dctx.strokeStyle=on?(res?'#5be37a':'#ffb24f'):'#666';dctx.setLineDash(on?[]:[4,4]);dctx.beginPath();dctx.arc(n.cx,n.cy,n.rOut+lwD*3,0,TAU);dctx.stroke();dctx.setLineDash([]);
+    if(n.pres){dctx.fillStyle='#ff4fd8';n.pres.forEach((v,q)=>{if(!v||q===n.pslot)return;const a=q*TAU/Q2,R=n.rOut+lwD*7;dctx.beginPath();dctx.arc(n.cx+Math.cos(a)*R,n.cy+Math.sin(a)*R,Math.max(2.5,W/500),0,TAU);dctx.fill()})}}
+  dctx.restore();
+  const lines=[`新方式: 多重円 ${nodes.length} 個を検出 / たどれた個体 ${visited.size} 個`,`読んだ選択: ${bits.length} ビット / 推定した短点 ${u.toFixed(1)}px（${Math.round(performance.now()-t0)} ms）`];
+  if(res)lines.push('','✔ 読み取りました',`シード: ${res.seed}`,res.settings?`設定: ${res.settings.split(';').length} 項目`:'設定: なし（現在の設定で再生成）');
+  else lines.push('','✘ 新方式では読めませんでした（中心の個体から線をたどれない／CRC 不一致）。画像全体を読ませてください。');
+  $('decOut').textContent=lines.join('\n');$('decRegen').disabled=!res;
+  return !!res;
+}
+function decodeV1(){
   const t0=performance.now();
   const W=DEC.img.width,H=DEC.img.height,m=inkMask(DEC.img);
   const at=(x,y)=>{x|=0;y|=0;return x>=0&&y>=0&&x<W&&y<H?m[y*W+x]:0};
@@ -896,7 +1071,7 @@ function run(newSeed){
   {const sr=mulberry(hashStr(($('seed').value||'0')+'#meaning'));const pk=a=>a[Math.floor(sr()*a.length)];
    o.sem={state:pk(['speak','']),work:pk(['yes','yes','no']),core:pk(['big','small','small','none']),motion:pk(['forward','extend',''])};}
   // 符号: 全ビットが載るまで中央を大きくして試算（決定的なので再生成でも同じ結果）
-  if(o.codeOn&&o.codeFit){
+  if(o.codeOn&&o.codeFit&&o.codeVer!=='v2'){
     const sd=$('seed').value||'0';
     for(let k=0;k<=24;k++){
       o.codeBoost=k*0.2;
@@ -918,7 +1093,10 @@ function run(newSeed){
   const finish=()=>{
     stat(true);$('gen').textContent='生成';
     const C=g.code;
-    if(!C){$('codeInfo').textContent='';}
+    if(g.code2){const C2=g.code2,D=C2.D,need=C2.packet.length,got=Math.min(D.i,need);
+      $('codeInfo').textContent=`新方式: データ ${need} ビット（${need/8-5} バイト${C2.settings?'・設定込み':''}）\n符号を持つ多重円 ${C2.list.length} 個 / 図形の選択に使った量 ${D.i} ビット\n内訳: 線の向き ${D.used.line}・環の数と向き ${D.used.shape}・模様 ${D.used.ring}\n`+
+        (D.i>=need?'✔ 全ビット収録（残りはシード由来の乱数で自然に埋めています）':`✘ 容量不足: ${need-got} ビット足りません。図形の最大数や大きさを増やしてください`)+(o.codeUnit<o.lw*o.codeLw*2?'\n※短点が線の太さに比べて短く、読み取りにくい':'');}
+    else if(!C){$('codeInfo').textContent='';}
     else{let mn=Infinity,mx=0,miss=0;for(const v of C.cover){mn=Math.min(mn,v);mx=Math.max(mx,v);if(!v)miss++}
       const tot=C.list.reduce((a,n)=>a+n.code.len,0);
       $('codeInfo').textContent=`データ ${C.total} ビット（${C.total/8-5} バイト${C.settings?'・設定込み':''}）\n符号を持つ図形 ${C.list.length} 個 / 載せた量 ${tot} ビット\n`+
@@ -932,7 +1110,7 @@ function run(newSeed){
       if(r.done){finish();return}
       const e=r.value;
       if(e.k==='n')drawNode(o,e.v);
-      else if(e.k==='l'){if(e.v.child&&o.pDrop>0&&DR()<o.pDrop){dropped++;e.v.dropped=true}else{shownL++;drawLine(o,e.v)}}
+      else if(e.k==='l'){if(e.v.child&&!e.v.keep&&o.pDrop>0&&DR()<o.pDrop){dropped++;e.v.dropped=true}else{shownL++;drawLine(o,e.v)}}
       else drawDot(o,e.v);
       if(performance.now()-t0>budget)break;
     }
