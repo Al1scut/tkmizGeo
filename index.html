@@ -160,10 +160,22 @@ button:hover{filter:brightness(1.15)}
 <div id="main"><canvas id="cv"></canvas></div>
 
 <script>
+const GLOBALS = {
+  MAX_HEIGHT: 8000, // referenced line 49 div
+  MAX_WIDTH : 8000  // referenced line 50 div
+};
+
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const ranges=[...document.querySelectorAll('input[type=range]')];
-ranges.forEach(r=>{const v=$('v_'+r.id);const f=()=>v&&(v.textContent=r.value);f();r.addEventListener('input',f)});
+ranges.forEach(
+  r => {
+    const v = $('v_'+r.id);
+    const f = () => v && (v.textContent = r.value);
+    f(); 
+    r.addEventListener('input',f);
+  }
+);
 
 // seeded RNG (mulberry32)
 function hashStr(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
@@ -278,19 +290,61 @@ function segHitsNode(nodes,x1,y1,x2,y2,skip){
 }
 
 // ---- モールス ----
-const MORSE={A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',
- 0:'-----',1:'.----',2:'..---',3:'...--',4:'....-',5:'.....',6:'-....',7:'--...',8:'---..',9:'----.','.':'.-.-.-',',':'--..--','?':'..--..','/':'-..-.','-':'-....-','!':'-.-.--','@':'.--.-.'};
+const MORSE = {
+  A:'.-',  B:'-...',
+  C:'-.-.',D:'-..',
+  E:'.',   F:'..-.',
+  G:'--.', H:'....',
+  I:'..',  J:'.---',
+  K:'-.-', L:'.-..',
+  M:'--',  N:'-.',
+  O:'---', P:'.--.',
+  Q:'--.-',R:'.-.',
+  S:'...', T:'-',
+  U:'..-', V:'...-',
+  W:'.--', X:'-..-',
+  Y:'-.--',Z:'--..',
+
+  0:'-----',
+  1:'.----',
+  2:'..---',
+  3:'...--',
+  4:'....-',
+  5:'.....',
+  6:'-....',
+  7:'--...',
+  8:'---..',
+  9:'----.',
+
+  '.':'.-.-.-',
+  ',':'--..--',
+  '?':'..--..',
+  '/':'-..-.',
+  '-':'-....-',
+  '!':'-.-.--',
+  '@':'.--.-.'
+};
+
 // トークン列: '.', '-', 'l'(文字間), 'w'(語間)
 function textTokens(t){
   const out=[];
   for(const ch of t.toUpperCase()){
-    if(ch===' '||ch==='\u3000'){if(out.length&&out[out.length-1]!=='w'){if(out[out.length-1]==='l')out.pop();out.push('w')}continue}
+    if(ch===' ' || ch==='\u3000'){
+      if(out.length && out[out.length-1] !== 'w'){
+        if(out[out.length-1] === 'l'){
+          out.pop();
+          out.push('w');
+        }
+      }
+      continue;
+    }
     const m=MORSE[ch];if(!m)continue;
     for(const e of m)out.push(e);out.push('l');
   }
   if(out.length&&out[out.length-1]==='l')out.pop();
   return out;
 }
+
 function randomLetter(o){const k=rint(1,5);let s='';for(let i=0;i<k;i++)s+=R()<o.mDashP?'-':'.';return s}
 // 円周 (角度 a0 から span) にモールス要素を敷き詰め → [{a0,a1,dot}]
 function morseArc(r,a0,span,unit,o){
@@ -489,67 +543,80 @@ function makeNode(x,y,r,depth,o,forceCircle){
   return n;
 }
 
-function* generate(o,g){
-  const nodes=g.nodes,lines=g.lines,dots=g.dots;gridReset();MAXR=0;
-  const addNode=n=>{nodes.push(n);gridAdd(n,0);if(n.r>MAXR)MAXR=n.r;if(n.bridges&&n.bridges.length)g.bridges+=n.bridges.length};
-  const cx=o.W/2,cy=o.H/2;
-  const root=makeNode(cx,cy,rnd(o.rootMin,o.rootMax),0,o,true);
-  addNode(root);yield {k:"n",v:root};
-  const queue=[root];let qi=0;
-  while(qi<queue.length&&nodes.length<o.maxNodes&&lines.length<o.maxLines){
+function* generate(config,g){
+  const nodes = g.nodes, lines=g.lines,dots=g.dots;gridReset();
+  MAXR=0;
+  const addNode=n=>{
+    nodes.push(n);
+    gridAdd(n,0);
+    if(n.r > MAXR){
+      MAXR=n.r;
+      if(n.bridges&&n.bridges.length){g.bridges+=n.bridges.length;}
+    }
+  };
+  const cx=config.W/2,cy=config.H/2;
+  const root = makeNode(cx,cy,rnd(config.rootMin,config.rootMax),0,config,true);
+  addNode(root);
+  yield {k:"n",v:root};
+  const queue=[root];
+  let qi=0;
+  while(qi < queue.length && nodes.length < config.maxNodes && lines.length < config.maxLines){
     const p=queue[qi++];
-    if(p.depth>=o.maxDepth)continue;
-    if(p!==root&&R()>o.pBranch)continue;
-    let cnt=rint(o.branchMin,o.branchMax);
+    if(p.depth>=config.maxDepth)continue;
+    if(p!==root&&R()>config.pBranch)continue;
+    let cnt=rint(config.branchMin,config.branchMax);
     if(p.core)cnt=Math.min(cnt,3); // 三角からは各辺1本まで
     const base=rnd(0,Math.PI*2);
     for(let i=0;i<cnt;i++){
-      if(lines.length>=o.maxLines)break;
+      if(lines.length>=config.maxLines)break;
       const regA=base+i/cnt*Math.PI*2;
       let placed=false;
-      const tries=o.noOverlap&&o.overlapMode==='retry'?14:1;
+      const tries=config.noOverlap&&config.overlapMode==='retry'?14:1;
       for(let t=0;t<tries&&!placed;t++){
-        const jitter=(1-o.regular)*Math.PI*(t?1:.5);
+        const jitter=(1-config.regular)*Math.PI*(t?1:.5);
         const a=(t?rnd(0,Math.PI*2):regA)+rnd(-jitter,jitter);
-        const sc=Math.pow(o.shrink,p.depth);
-        const len=rnd(o.lenMin,o.lenMax)*sc;
-        const an=chooseAnchor(p,a,o,i);
+        const sc=Math.pow(config.shrink,p.depth);
+        const len=rnd(config.lenMin,config.lenMax)*sc;
+        const an=chooseAnchor(p,a,config,i);
         if(!an)break;
         const sx=an.sx,sy=an.sy;
-        let wantNode=nodes.length<o.maxNodes&&R()<o.pNode;
-        const cr=rnd(o.rMin,o.rMax)*sc;
+        let wantNode=nodes.length<config.maxNodes&&R()<config.pNode;
+        const cr=rnd(config.rMin,config.rMax)*sc;
         const dist=an.reach+len+(wantNode?cr:0);
         const ex=sx+an.dx*dist,ey=sy+an.dy*dist;
         const lx=sx+an.dx*(an.reach+len),ly=sy+an.dy*(an.reach+len);
         const margin=wantNode?cr:4;
-        if(o.inBounds&&(ex<margin||ey<margin||ex>o.W-margin||ey>o.H-margin))continue;
-        if(o.lineAvoid&&segHitsNode(nodes,sx,sy,lx,ly,[p]))continue;
-        if(wantNode&&o.noOverlap&&overlaps(nodes,ex,ey,cr,o.gap,null)){
-          if(o.overlapMode==='retry')continue;
-          if(o.overlapMode==='skip'){placed=true;break}
+        if(config.inBounds&&(ex<margin||ey<margin||ex>config.W-margin||ey>config.H-margin))continue;
+        if(config.lineAvoid&&segHitsNode(nodes,sx,sy,lx,ly,[p]))continue;
+        if(wantNode&&config.noOverlap&&overlaps(nodes,ex,ey,cr,config.gap,null)){
+          if(config.overlapMode==='retry')continue;
+          if(config.overlapMode==='skip'){placed=true;break}
           wantNode=false; // line only
         }
         // 線だけの場合も終端が既存図形内なら重ねない
-        if(!wantNode&&o.noOverlap&&overlaps(nodes,lx,ly,2,0,p)){
-          if(o.overlapMode==='retry')continue;
+        if(!wantNode&&config.noOverlap&&overlaps(nodes,lx,ly,2,0,p)){
+          if(config.overlapMode==='retry')continue;
           placed=true;break;
         }
-        const accent=R()<o.pAcc;
+        const accent=R()<config.pAcc;
         if(wantNode){
-          const n=makeNode(ex,ey,cr,p.depth+1,o);
+          const n=makeNode(ex,ey,cr,p.depth+1,config);
           const back=Math.atan2(-an.dy,-an.dx);
-          const er=endRadius(n,back,o);
-          const drop=o.pDropLine>0&&RD()<o.pDropLine;
+          const er=endRadius(n,back,config);
+          const drop=config.pDropLine>0&&RD()<config.pDropLine;
           const ln={x1:sx,y1:sy,x2:ex-an.dx*er,y2:ey-an.dy*er,accent,drop,
             src:p,dst:n,endR:er,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)};
           if(drop)g.dropped++;
           lines.push(ln);
           addNode(n);queue.push(n);yield {k:"l",v:ln};yield {k:"n",v:n};
         }else{
-          const ln={x1:sx,y1:sy,x2:lx,y2:ly,accent,drop:false,
-            src:p,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)};
-          lines.push(ln);yield {k:"l",v:ln};
-          if(R()<o.pDot){const d={x:lx,y:ly,r:Math.max(2,o.lw*rnd(1.5,3)),accent};dots.push(d);yield {k:"d",v:d}}
+          const ln = {
+            x1:sx,y1:sy,x2:lx,y2:ly,accent,drop:false,
+            src:p,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)
+          };
+          lines.push(ln);
+          yield {k:"l",v:ln};
+          if(R()<config.pDot){const d={x:lx,y:ly,r:Math.max(2,config.lw*rnd(1.5,3)),accent};dots.push(d);yield {k:"d",v:d}}
         }
         placed=true;
       }
@@ -563,6 +630,7 @@ function clearCanvas(o){
   if(!o.transparent){ctx.fillStyle=o.bg;ctx.fillRect(0,0,o.W,o.H)}
   ctx.lineCap='round';ctx.lineJoin='round';
 }
+
 const col=(o,a)=>a?o.acc:o.fg;
 function drawLine(o,l){if(l.drop)return;ctx.strokeStyle=col(o,l.accent);ctx.lineWidth=o.lw;ctx.lineCap='round';
   ctx.beginPath();ctx.moveTo(l.x1,l.y1);ctx.lineTo(l.x2,l.y2);ctx.stroke()}
@@ -595,7 +663,7 @@ function drawNode(o,n){
     ctx.stroke()
   };
 
-    switch(n.type){
+  switch(n.type){
     case'circle':
       ctx.beginPath();
       ctx.arc(0,0,n.r,0,Math.PI*2);finish();
@@ -667,35 +735,39 @@ function drawNode(o,n){
       ctx.stroke();
       break;
     }
-    }
-    ctx.restore();
+  }
+  ctx.restore();
 }
 
 let job=0;
 function run(newSeed){
-  if(newSeed&&!$('lockSeed').checked)$('seed').value=Math.random().toString(36).slice(2,10);
-  const seed=$('seed').value||'0';
-  R=mulberry(hashStr(seed));
-  RD=mulberry(hashStr(seed+'#drop'));
-  const o=cfg();const my=++job;
+  if(newSeed && !$('lockSeed').checked){
+    $('seed').value = Math.random().toString(36).slice(2,10);
+  }
+  const seed = $('seed').value || '0';
+  R = mulberry(hashStr(seed));
+  RD = mulberry(hashStr(seed+'#drop'));
+  const o = cfg();
+  const my=++job;
   clearCanvas(o);
   const g={nodes:[],lines:[],dots:[],dropped:0,bridges:0};
-  const it=generate(o,g);
+  const it = generate(o,g);
   window.__bloom={o,g};
   const live=$('live').checked,budget=+$('budget').value;
-  const stat=done=>{
+  const stat = done => {
     const shown=g.lines.length-g.dropped;
     const dropTxt=g.dropped?`（ドロップ ${g.dropped}）`:'';
     const bridgeTxt=g.bridges?` / 橋 ${g.bridges}`:'';
     $('stat').textContent=`図形 ${g.nodes.length} / 線 ${shown}${dropTxt} / 点 ${g.dots.length}${bridgeTxt}`+(done?'':'  … 生成中');
   };
-  const step=()=>{
+
+  const step = () => {
     if(my!==job)return;
     const t0=performance.now();
     while(true){
-      const r=it.next();
-      if(r.done){stat(true);$('gen').textContent='生成';return}
-      const e=r.value;
+      const result=it.next();
+      if(result.done){stat(true);$('gen').textContent='生成';return}
+      const e=result.value;
       if(e.k==='n'){
         drawNode(o,e.v);
       }else if(e.k==='l'){
@@ -704,7 +776,7 @@ function run(newSeed){
         drawDot(o,e.v);
       }
 
-      if(performance.now() - t0 > budget)break;
+      if(performance.now() - t0 > budget){break};
     }
     stat(false);
     if(live){
@@ -716,20 +788,44 @@ function run(newSeed){
   $('gen').textContent='生成（再）';
   step();
 }
-$('gen').onclick=()=>run(true);
-document.querySelectorAll('#side input,#side select').forEach(el=>{
-  if(['seed','lockSeed','live','budget'].includes(el.id))return;
-  el.addEventListener('change',()=>run(false));
-});
-$('seed').addEventListener('change',()=>run(false));
-$('mText').addEventListener('input',()=>run(false));
-$('dl').onclick=()=>{
-  cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);
-    a.download=`geometric_${$('seed').value}.png`;document.body.appendChild(a);a.click();
-    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)},'image/png');
-};
-addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();run(true)}});
-run(true);
+
+function main() {
+  $('gen').onclick=()=>run(true);
+  document.querySelectorAll('#side input,#side select').forEach(el=>{
+    if(['seed','lockSeed','live','budget'].includes(el.id))return;
+    el.addEventListener('change',()=>run(false));
+  });
+  $('seed').addEventListener('change',()=>run(false));
+  $('mText').addEventListener('input',()=>run(false));
+  $('dl').onclick=()=>{
+    cv.toBlob(
+      b => {
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(b);
+        a.download=`geometric_${$('seed').value}.png`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(
+          () => {
+            URL.revokeObjectURL(a.href);
+            a.remove()
+          }, 1000
+        )
+      },
+      'image/png'
+    );
+  };
+
+  addEventListener(
+    'keydown',
+    e => {
+      if(e.code==='Space'&&e.target.tagName!=='INPUT')
+      {e.preventDefault();run(true)}
+    }
+  );
+  run(true);
+}
+main();
 </script>
 </body>
 </html>
