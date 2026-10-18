@@ -175,21 +175,70 @@ const pick=a=>a[Math.floor(R()*a.length)];
 
 function cfg(){
   const n=id=>+$(id).value, c=id=>$(id).checked;
-  const o={W:Math.min(8000,Math.max(64,n("W"))),H:Math.min(8000,Math.max(64,n("H"))),maxNodes:n('maxNodes'),maxLines:n('maxLines'),
-    branchMin:n('branchMin'),branchMax:n('branchMax'),maxDepth:n('maxDepth'),maxRings:n('maxRings'),
-    rootMin:n('rootMin'),rootMax:n('rootMax'),rMin:n('rMin'),rMax:n('rMax'),shrink:n('shrink')/100,
-    lenMin:n('lenMin'),lenMax:n('lenMax'),pNode:n('pNode')/100,pBranch:n('pBranch')/100,pDot:n('pDot')/100,
-    regular:n('regular')/100,noOverlap:c('noOverlap'),overlapMode:$('overlapMode').value,gap:n('gap'),
+  const o = {
+    W:Math.min(GLOBALS.MAX_WIDTH , Math.max(64,n("W"))),
+    H:Math.min(GLOBALS.MAX_HEIGHT, Math.max(64,n("H"))),
+    maxNodes:n('maxNodes'),
+    maxLines:n('maxLines'),
+    branchMin:n('branchMin'),
+    branchMax:n('branchMax'),
+    maxDepth:n('maxDepth'),
+    maxRings:n('maxRings'),
+    rootMin:n('rootMin'),
+    rootMax:n('rootMax'),
+    rMin:n('rMin'),
+    rMax:n('rMax'),
+    shrink:n('shrink')/100,
+    lenMin:n('lenMin'),
+    lenMax:n('lenMax'),
+    pNode:n('pNode')/100,
+    pBranch:n('pBranch')/100,
+    pDot:n('pDot')/100,
+    regular:n('regular')/100,
+    noOverlap:c('noOverlap'),
+    overlapMode:$('overlapMode').value,
+    gap:n('gap'),
     pDropLine:n('pDropLine')/100,
-    lineAvoid:c('lineAvoid'),inBounds:c('inBounds'),bg:$('bgc').value,transparent:c('transparent'),
-    fg:$('fgc').value,acc:$('acc').value,pAcc:n('pAcc')/100,lw:n('lw'),pFill:n('pFill')/100,lineFromEdge:c('lineFromEdge'),
-    startRing:$('startRing').value,endAtRing:c('endAtRing'),rootRings:c('rootRings'),minRings:n('minRings'),
-    triMode:$('triMode').value,pTri:n('pTri')/100,
-    morseOn:c('morseOn'),solidInner:n('solidInner'),solidFollow:c('solidFollow'),pMorse:n('pMorse')/100,
-    mDot:n('mDot'),mDash:n('mDash'),mGap:n('mGap'),mLGap:n('mLGap'),mWGap:n('mWGap'),mDashP:n('mDashP')/100,
-    mWordP:n('mWordP')/100,mLw:n('mLw'),mScale:n('mScale')/100,mRound:c('mRound'),mCap:c('mCap'),mText:$('mText').value,
-    bridgeOn:c('bridgeOn'),bridgeP:n('bridgeP')/100,
-    shapes:['circle','rings','semi','mix','square','dsq','triheart','tricore'].filter(s=>c('s_'+s))};
+    lineAvoid:c('lineAvoid'),
+    inBounds:c('inBounds'),
+    bg:$('bgc').value,
+    transparent:c('transparent'),
+    fg:$('fgc').value,
+    acc:$('acc').value,
+    pAcc:n('pAcc')/100,
+    lw:n('lw'),
+    pFill:n('pFill')/100,
+    lineFromEdge:c('lineFromEdge'),
+    startRing:$('startRing').value,
+    endAtRing:c('endAtRing'),
+    rootRings:c('rootRings'),
+    minRings:n('minRings'),
+    triMode:$('triMode').value,
+    pTri:n('pTri')/100,
+    morseOn:c('morseOn'),
+    solidInner:n('solidInner'),
+    solidFollow:c('solidFollow'),
+    pMorse:n('pMorse')/100,
+    mDot:n('mDot'),
+    mDash:n('mDash'),
+    mGap:n('mGap'),
+    mLGap:n('mLGap'),
+    mWGap:n('mWGap'),
+    mDashP:n('mDashP')/100,
+    mWordP:n('mWordP')/100,
+    mLw:n('mLw'),
+    mScale:n('mScale')/100,
+    mRound:c('mRound'),
+    mCap:c('mCap'),
+    mText:$('mText').value,
+    bridgeOn:c('bridgeOn'),
+    bridgeP:n('bridgeP')/100,
+    shapes:[
+      'circle','rings','semi',
+      'mix','square','dsq',
+      'triheart','tricore'
+    ].filter(s=>c('s_'+s))
+  };
   const sw=(a,b)=>{if(o[a]>o[b])[o[a],o[b]]=[o[b],o[a]]};
   sw('branchMin','branchMax');sw('rootMin','rootMax');sw('rMin','rMax');sw('lenMin','lenMax');
   if(!o.shapes.length)o.shapes=['circle'];
@@ -526,15 +575,36 @@ function triPath(rot,Rtri){
   }
   ctx.closePath();
 }
+
 function drawNode(o,n){
-    const c=col(o,n.accent);ctx.lineCap='round';
-ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
-    ctx.save();ctx.translate(n.x,n.y);ctx.rotate(n.rot);
-    const finish=()=>{if(n.fill){ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}ctx.stroke()};
+  const c = col(o,n.accent);
+  ctx.lineCap='round';
+  ctx.strokeStyle=c;
+  ctx.fillStyle=c;
+  ctx.lineWidth=o.lw;
+  ctx.save();
+  ctx.translate(n.x,n.y);
+  ctx.rotate(n.rot);
+
+  const finish = () => {
+    if (n.fill) {
+      ctx.globalAlpha =.9;
+      ctx.fill();
+      ctx.globalAlpha=1
+    }
+    ctx.stroke()
+  };
+
     switch(n.type){
-      case'circle':ctx.beginPath();ctx.arc(0,0,n.r,0,Math.PI*2);finish();
-        ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill();break;
-      case'rings':case'mix':{
+    case'circle':
+      ctx.beginPath();
+      ctx.arc(0,0,n.r,0,Math.PI*2);finish();
+      ctx.beginPath();
+      ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);
+      ctx.fill();
+      break;
+    case'rings':
+      case'mix':{
         const L=n.ringList;
         if(n.fill&&!n.core){const g=L[L.length-1];ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);if(g.span<Math.PI*2-1e-6)ctx.closePath();ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}
         if(n.core&&n.core.kind==='tri'&&n.fill){
@@ -551,7 +621,11 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
               else{ctx.beginPath();ctx.arc(0,0,g.r,sg.a0,sg.a1);ctx.stroke()}
             }
             ctx.lineWidth=o.lw;ctx.lineCap='round';
-          }else{ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);ctx.stroke()}
+          }else{
+            ctx.beginPath();
+            ctx.arc(0,0,g.r,g.a0,g.a0+g.span);
+            ctx.stroke();
+          }
         }
         if(n.bridges&&n.bridges.length){
           ctx.lineWidth=o.lw*o.mLw;ctx.lineCap='round';
@@ -566,14 +640,37 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
           triPath(n.triRot-n.rot,L[n.core.ring].r);ctx.stroke();
         }
         if(n.type==='rings'&&!n.core){ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill()}
-        break}
-      case'semi':ctx.beginPath();ctx.arc(0,0,n.r,0,Math.PI);if(n.flat)ctx.closePath();finish();break;
-      case'square':{const s=n.r/Math.SQRT2;ctx.beginPath();ctx.rect(-s,-s,s*2,s*2);finish();break}
-      case'dsq':{const s=n.r/Math.SQRT2;ctx.beginPath();ctx.rect(-s,-s,s*2,s*2);finish();
-        const s2=s*.6;ctx.rotate(Math.PI/4);ctx.beginPath();ctx.rect(-s2,-s2,s2*2,s2*2);ctx.stroke();break}
+        break;
+      }
+    case'semi':
+      ctx.beginPath();
+      ctx.arc(0,0,n.r,0,Math.PI);
+      if(n.flat)ctx.closePath();
+      finish();
+      break;
+    case'square':{
+      const s=n.r/Math.SQRT2;
+      ctx.beginPath();
+      ctx.rect(-s,-s,s*2,s*2);
+      finish();
+      break;
+    }
+    case'dsq':{
+      const s=n.r/Math.SQRT2;
+      ctx.beginPath();
+      ctx.rect(-s,-s,s*2,s*2);
+      finish();
+      const s2=s*.6;
+      ctx.rotate(Math.PI/4);
+      ctx.beginPath();
+      ctx.rect(-s2,-s2,s2*2,s2*2);
+      ctx.stroke();
+      break;
+    }
     }
     ctx.restore();
 }
+
 let job=0;
 function run(newSeed){
   if(newSeed&&!$('lockSeed').checked)$('seed').value=Math.random().toString(36).slice(2,10);
@@ -599,11 +696,22 @@ function run(newSeed){
       const r=it.next();
       if(r.done){stat(true);$('gen').textContent='生成';return}
       const e=r.value;
-      if(e.k==='n')drawNode(o,e.v);else if(e.k==='l')drawLine(o,e.v);else drawDot(o,e.v);
-      if(performance.now()-t0>budget)break;
+      if(e.k==='n'){
+        drawNode(o,e.v);
+      }else if(e.k==='l'){
+        drawLine(o,e.v);
+      }else{
+        drawDot(o,e.v);
+      }
+
+      if(performance.now() - t0 > budget)break;
     }
     stat(false);
-    if(live)requestAnimationFrame(step);else setTimeout(step,0);
+    if(live){
+      requestAnimationFrame(step);
+    }else{
+      setTimeout(step,0);
+    }
   };
   $('gen').textContent='生成（再）';
   step();
