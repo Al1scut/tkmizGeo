@@ -70,10 +70,10 @@ button:hover{filter:brightness(1.15)}
   <div class="row"><label>線の先に図形を置く %</label><span class="val" id="v_pNode"></span><input type="range" id="pNode" min="0" max="100" value="70"></div>
   <div class="row"><label>図形から更に線を伸ばす %</label><span class="val" id="v_pBranch"></span><input type="range" id="pBranch" min="0" max="100" value="65"></div>
   <div class="row"><label>線の終端に点 %</label><span class="val" id="v_pDot"></span><input type="range" id="pDot" min="0" max="100" value="40"></div>
+  <div class="row"><label>線なしで図形をくっつける %</label><span class="val" id="v_pAttach"></span><input type="range" id="pAttach" min="0" max="100" value="0"></div>
+  <div class="row"><label>くっつける時の食い込み %</label><span class="val" id="v_attachIn"></span><input type="range" id="attachIn" min="-50" max="80" value="0"></div>
+  <div class="row"><label>親子線ドロップアウト %</label><span class="val" id="v_pDrop"></span><input type="range" id="pDrop" min="0" max="100" value="0"></div>
   <div class="row"><label>角度の等間隔度 %</label><span class="val" id="v_regular"></span><input type="range" id="regular" min="0" max="100" value="50"></div>
-
-  <h2>ドロップアウト</h2>
-  <div class="row"><label>親子線ドロップアウト %</label><span class="val" id="v_pDropLine"></span><input type="range" id="pDropLine" min="0" max="100" value="0"></div>
 
   <h2>図形の種類</h2>
   <div class="shapes">
@@ -83,18 +83,12 @@ button:hover{filter:brightness(1.15)}
     <label class="chk"><input type="checkbox" id="s_mix" checked>円＋半円ミックス</label>
     <label class="chk"><input type="checkbox" id="s_square" checked>正方形</label>
     <label class="chk"><input type="checkbox" id="s_dsq" checked>二重正方形</label>
-    <label class="chk"><input type="checkbox" id="s_triheart">三角心</label>
-    <label class="chk"><input type="checkbox" id="s_tricore">三角環</label>
+    <label class="chk"><input type="checkbox" id="s_triCore">三角心</label>
+    <label class="chk"><input type="checkbox" id="s_triRing">三角環</label>
   </div>
-
-  <h2>正三角</h2>
-  <div class="row"><label>三角の出現率 %</label><span class="val" id="v_pTri"></span><input type="range" id="pTri" min="0" max="100" value="20"></div>
-  <div class="row"><label>三角環</label><span></span>
-    <select id="triMode" style="grid-column:1/3">
-      <option value="first">第一円（内側から1番目）</option>
-      <option value="second">第二円（内側から2番目）</option>
-      <option value="random" selected>ランダム（両方）</option>
-    </select></div>
+  <div class="row"><label>三角の出現率 %</label><span class="val" id="v_pTri"></span><input type="range" id="pTri" min="0" max="100" value="30"></div>
+  <div class="row"><label>三角環を内接させる円</label><span></span>
+    <select id="triWhich" style="grid-column:1/3"><option value="1">第一円（最内輪）</option><option value="2">第二円</option><option value="r">ランダム</option></select></div>
 
   <h2>重なり</h2>
   <label class="chk"><input type="checkbox" id="noOverlap" checked>線の先に既存の図形があれば重ねない</label>
@@ -106,6 +100,7 @@ button:hover{filter:brightness(1.15)}
     </select></div>
   <div class="row"><label>図形間の余白</label><span class="val" id="v_gap"></span><input type="range" id="gap" min="0" max="400" value="8"></div>
   <label class="chk"><input type="checkbox" id="lineAvoid">線が既存図形を横切らない</label>
+  <label class="chk"><input type="checkbox" id="noCross">線が既存の線をまたがない</label>
   <label class="chk"><input type="checkbox" id="inBounds" checked>キャンバス内に収める</label>
 
   <h2>スタイル</h2>
@@ -124,9 +119,9 @@ button:hover{filter:brightness(1.15)}
       <option value="1">第一内輪</option>
       <option value="2" selected>第二内輪</option>
       <option value="12">第一・第二内輪からランダム</option>
-      <option value="any">全環からランダム（各線）</option>
       <option value="edge">最外周</option>
       <option value="center">中心</option>
+      <option value="all">全環からランダム（各線・実線内輪のみ）</option>
     </select></div>
   <label class="chk"><input type="checkbox" id="endAtRing" checked>子の多重円にも同じ環で接続</label>
   <label class="chk"><input type="checkbox" id="rootRings" checked>中央を常に多重円にする</label>
@@ -151,13 +146,36 @@ button:hover{filter:brightness(1.15)}
   <div class="row"><label>文字列をモールス化（空=ランダム）</label><span></span>
     <input type="text" id="mText" placeholder="例: SOS HELLO" style="grid-column:1/3"></div>
 
+  <h2>シード埋め込み（画像全体に分散）</h2>
+  <label class="chk"><input type="checkbox" id="codeOn">シードを図形群に刻む</label>
+  <label class="chk"><input type="checkbox" id="codeSettings">設定も一緒に刻む（既定値からの差分）</label>
+  <div class="row"><label>短点の長さ px</label><span class="val" id="v_codeUnit"></span><input type="range" id="codeUnit" min="3" max="30" step="0.5" value="5"></div>
+  <div class="row"><label>1図形に載せる最小ビット数</label><span class="val" id="v_codeMin"></span><input type="range" id="codeMin" min="4" max="64" value="8"></div>
+  <div class="row"><label>1図形に載せる最大ビット数（分散の度合い）</label><span class="val" id="v_codeMax"></span><input type="range" id="codeMax" min="8" max="127" value="48"></div>
+  <div class="row"><label>子図形の大きさ ×（符号を載せやすく）</label><span class="val" id="v_codeScale"></span><input type="range" id="codeScale" min="1" max="4" step="0.1" value="1.8"></div>
+  <label class="chk"><input type="checkbox" id="codeConvert" checked>円・ミックスも符号の多重円に変える</label>
+  <label class="chk"><input type="checkbox" id="codeWhole" checked>全文が入る図形には全文を刻む（その図形だけで読める）</label>
+  <label class="chk"><input type="checkbox" id="codeOrient" checked>図形の向きにも3ビット載せる（配置チャネル）</label>
+  <label class="chk"><input type="checkbox" id="codeGuard" checked>符号を持つ図形の上を線が通らない</label>
+  <div class="row"><label>符号の線の太さ ×</label><span class="val" id="v_codeLw"></span><input type="range" id="codeLw" min="0.5" max="4" step="0.25" value="1"></div>
+  <label class="chk"><input type="checkbox" id="codeFit" checked>入りきらない分は中央を大きくして収める</label>
+  <div class="row"><label>中央の最小半径（容量の底上げ）px</label><span class="val" id="v_codeRootR"></span><input type="range" id="codeRootR" min="0" max="800" value="0"></div>
+  <div id="codeInfo" style="color:var(--mute);margin-top:4px;white-space:pre-wrap"></div>
+
+  <h2>デコード</h2>
+  <div class="btns"><button id="decSelf">表示中の画像を読む</button><button id="decFileBtn">画像ファイルを読む</button></div>
+  <input type="file" id="decFile" accept="image/*" hidden>
+  <div class="note" style="color:var(--mute);font-size:12px;margin:4px 0">画像全体から符号を持つ図形を探して読みます。見落とした図形があれば、その中心をクリックすると追加で読みます。</div>
+  <div class="btns"><button class="pri" id="decRegen" disabled>このシードで再生成</button><button id="decBack">生成画面に戻る</button></div>
+  <div id="decOut" style="white-space:pre-wrap;margin-top:6px;font-variant-numeric:tabular-nums"></div>
+
   <h2>モールス橋</h2>
-  <label class="chk"><input type="checkbox" id="bridgeOn">モールス間ブリッジ（同心環）</label>
-  <div class="row"><label>ブリッジ確率 %</label><span class="val" id="v_bridgeP"></span><input type="range" id="bridgeP" min="0" max="100" value="100"></div>
+  <label class="chk"><input type="checkbox" id="bridgeOn">隣り合う環を長点どうしで橋渡し</label>
+  <div class="row"><label>橋を架ける確率 %（1文字ごと）</label><span class="val" id="v_pBridge"></span><input type="range" id="pBridge" min="0" max="100" value="50"></div>
 
   <div id="stat"></div>
 </div>
-<div id="main"><canvas id="cv"></canvas></div>
+<div id="main"><canvas id="cv"></canvas><canvas id="dcv" hidden style="cursor:crosshair"></canvas></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -168,7 +186,7 @@ ranges.forEach(r=>{const v=$('v_'+r.id);const f=()=>v&&(v.textContent=r.value);f
 // seeded RNG (mulberry32)
 function hashStr(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-let R=Math.random,RD=Math.random;
+let R=Math.random;
 const rnd=(a,b)=>a+R()*(b-a);
 const rint=(a,b)=>Math.floor(rnd(a,b+1));
 const pick=a=>a[Math.floor(R()*a.length)];
@@ -180,16 +198,19 @@ function cfg(){
     rootMin:n('rootMin'),rootMax:n('rootMax'),rMin:n('rMin'),rMax:n('rMax'),shrink:n('shrink')/100,
     lenMin:n('lenMin'),lenMax:n('lenMax'),pNode:n('pNode')/100,pBranch:n('pBranch')/100,pDot:n('pDot')/100,
     regular:n('regular')/100,noOverlap:c('noOverlap'),overlapMode:$('overlapMode').value,gap:n('gap'),
-    pDropLine:n('pDropLine')/100,
     lineAvoid:c('lineAvoid'),inBounds:c('inBounds'),bg:$('bgc').value,transparent:c('transparent'),
     fg:$('fgc').value,acc:$('acc').value,pAcc:n('pAcc')/100,lw:n('lw'),pFill:n('pFill')/100,lineFromEdge:c('lineFromEdge'),
     startRing:$('startRing').value,endAtRing:c('endAtRing'),rootRings:c('rootRings'),minRings:n('minRings'),
-    triMode:$('triMode').value,pTri:n('pTri')/100,
     morseOn:c('morseOn'),solidInner:n('solidInner'),solidFollow:c('solidFollow'),pMorse:n('pMorse')/100,
     mDot:n('mDot'),mDash:n('mDash'),mGap:n('mGap'),mLGap:n('mLGap'),mWGap:n('mWGap'),mDashP:n('mDashP')/100,
     mWordP:n('mWordP')/100,mLw:n('mLw'),mScale:n('mScale')/100,mRound:c('mRound'),mCap:c('mCap'),mText:$('mText').value,
-    bridgeOn:c('bridgeOn'),bridgeP:n('bridgeP')/100,
-    shapes:['circle','rings','semi','mix','square','dsq','triheart','tricore'].filter(s=>c('s_'+s))};
+    shapes:['circle','rings','semi','mix','square','dsq'].filter(s=>c('s_'+s)),
+    tris:[['triCore','core'],['triRing','ring']].filter(t=>c('s_'+t[0])).map(t=>t[1]),pTri:n('pTri')/100,triWhich:$('triWhich').value,
+    noCross:c('noCross'),codeOn:c('codeOn'),codeSettings:c('codeSettings'),codeUnit:n('codeUnit'),codeMin:n('codeMin'),codeMax:n('codeMax'),codeConvert:c('codeConvert'),codeFit:c('codeFit'),codeWhole:c('codeWhole'),codeScale:n('codeScale'),codeOrient:c('codeOrient'),
+    codeGuard:c('codeGuard'),codeLw:n('codeLw'),codeRootR:n('codeRootR'),pAttach:n('pAttach')/100,attachIn:n('attachIn')/100,
+    bridgeOn:c('bridgeOn'),pBridge:n('pBridge')/100,pDrop:n('pDrop')/100,
+    sem:{state:'',work:'',core:'',motion:''}};
+  o.otherEmpty=!o.shapes.length;
   const sw=(a,b)=>{if(o[a]>o[b])[o[a],o[b]]=[o[b],o[a]]};
   sw('branchMin','branchMax');sw('rootMin','rootMax');sw('rMin','rMax');sw('lenMin','lenMax');
   if(!o.shapes.length)o.shapes=['circle'];
@@ -248,27 +269,26 @@ function morseArc(r,a0,span,unit,o){
   const segs=[];const L=r*span;if(L<unit*2)return segs;
   const txt=o.mText.trim()?textTokens(o.mText):null;
   let ti=txt?rint(0,txt.length-1):0;
-  let pos=0,pendingGap=0,letter=0,wrap=false;
+  let pos=0,pendingGap=0;
   const nextLetterRandom=()=>{const s=[...randomLetter(o)];const r2=R()<o.mWordP?'w':'l';return [...s.flatMap((e,i)=>i?[e]:[e]),r2]};
   let buf=[];
   const nextTok=()=>{
     if(txt){const t=txt[ti%txt.length];ti++;if(ti%txt.length===0)return t==='l'||t==='w'?t:'__wrap_'+t;return t}
     if(!buf.length)buf=nextLetterRandom();return buf.shift();
   };
-  let prevEl=false,guard=0;
+  let prevEl=false,guard=0,letter=0;
   while(pos<L&&guard++<100000){
     let t=nextTok();
-    if(t.startsWith&&t.startsWith('__wrap_')){t=t.slice(7);wrap=true}
-    if(t==='l'){pendingGap=o.mLGap*unit;prevEl=false;letter++;continue}
-    if(t==='w'){pendingGap=o.mWGap*unit;prevEl=false;letter++;continue}
+    if(t.startsWith&&t.startsWith('__wrap_')){t=t.slice(7);if(t==='.'||t==='-'){/* 文末の後に語間 */}}
+    if(t==='l'){pendingGap=o.mLGap*unit;if(prevEl)letter++;prevEl=false;continue}
+    if(t==='w'){pendingGap=o.mWGap*unit;if(prevEl)letter++;prevEl=false;continue}
     const gap=prevEl?o.mGap*unit:pendingGap;pendingGap=0;
     const len=t==='-'?o.mDash*unit:unit;
     const s=pos+gap,e=s+len;
     if(e>L-(o.mGap*unit))break;
     segs.push({a0:a0+s/r,a1:a0+e/r,dot:t==='.',dash:t==='-',letter});
     pos=e;prevEl=true;
-    if(wrap){letter++;wrap=false}
-    if(txt&&ti%txt.length===0){pendingGap=o.mWGap*unit;prevEl=false}
+    if(txt&&ti%txt.length===0){pendingGap=o.mWGap*unit;prevEl=false;letter++}
   }
   return segs;
 }
@@ -277,150 +297,117 @@ function solidCount(o){
   return o.solidInner;
 }
 // 起点半径: 内側から数えて k 番目の環
-function startRadius(n,o){
+// 図形の縁までの距離（世界角 a 方向）。角形は正方形として、半円は弧側のみ半径
+function edgeDist(n,a,forAttach){
+  if(n.type==='square'||n.type==='dsq'){const s=n.r/Math.SQRT2;const la=a-n.rot;return s/Math.max(Math.abs(Math.cos(la)),Math.abs(Math.sin(la)))}
+  if(n.type==='semi'){if(forAttach)return n.r;const la=((a-n.rot)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);return la<=Math.PI?n.r:0}
+  return n.r;
+}
+// 線分グリッド（線の交差判定）
+let LGRID=null;const LCELL=64;
+function lgCells(x1,y1,x2,y2,fn){const L=Math.hypot(x2-x1,y2-y1),st=Math.max(1,Math.ceil(L/(LCELL/2)));const seen=new Set();
+  for(let i=0;i<=st;i++){const x=x1+(x2-x1)*i/st,y=y1+(y2-y1)*i/st;for(const dx of[-1,0,1])for(const dy of[-1,0,1]){const k=(Math.floor(x/LCELL)+dx)+','+(Math.floor(y/LCELL)+dy);if(!seen.has(k)){seen.add(k);fn(k)}}}}
+function lgAdd(l){lgCells(l.x1,l.y1,l.x2,l.y2,k=>{let c=LGRID.get(k);if(!c)LGRID.set(k,c=[]);c.push(l)})}
+function segCross(a,b,c,d){
+  const r=[b[0]-a[0],b[1]-a[1]],q=[d[0]-c[0],d[1]-c[1]],den=r[0]*q[1]-r[1]*q[0];if(Math.abs(den)<1e-9)return false;
+  const t=((c[0]-a[0])*q[1]-(c[1]-a[1])*q[0])/den,u=((c[0]-a[0])*r[1]-(c[1]-a[1])*r[0])/den;
+  return t>1e-3&&t<1-1e-3&&u>1e-3&&u<1-1e-3;
+}
+function circleHitsLines(x,y,rad,skip){
+  const cand=new Set();
+  for(let i=Math.floor((x-rad)/LCELL);i<=Math.floor((x+rad)/LCELL);i++)for(let j=Math.floor((y-rad)/LCELL);j<=Math.floor((y+rad)/LCELL);j++){const c=LGRID.get(i+','+j);if(c)for(const l of c)cand.add(l)}
+  for(const l of cand){if(l===skip)continue;if(segHitsCircle(l.x1,l.y1,l.x2,l.y2,{x,y},rad))return true}
+  return false;
+}
+function crossesLines(x1,y1,x2,y2){
+  const cand=new Set();lgCells(x1,y1,x2,y2,k=>{const c=LGRID.get(k);if(c)for(const l of c)cand.add(l)});
+  for(const l of cand)if(segCross([x1,y1],[x2,y2],[l.x1,l.y1],[l.x2,l.y2]))return true;
+  return false;
+}
+let LASTK=0; // 直近の起点が内側から何番目の環か（0=環以外）
+function startRadius(n,o,a){
+  LASTK=0;
   if(o.startRing==='center')return 0;
+  if(o.startRing==='all'&&n.ringList){ // 子側: 従来どおり任意の環
+    const L=n.ringList.filter(g=>!g.hidden);const i=Math.floor(R()*L.length);LASTK=L.length-i;return L[i].r;
+  }
   if(n.ringList&&o.startRing!=='edge'){
     const k=o.startRing==='12'?(R()<.5?1:2):+o.startRing;
-    const L=n.ringList;return L[Math.max(0,L.length-k)].r;
+    const L=n.ringList;LASTK=Math.min(k,L.length);return L[Math.max(0,L.length-k)].r;
   }
-  return o.lineFromEdge?n.r:0;
+  return o.lineFromEdge?(a==null?n.r:edgeDist(n,a)):0;
 }
-
-// 環の局部角が描画区間に含まれるか（span が 2π を跨ぐ場合も考慮）
-function coversAngle(g,ang){
-  if(g.span>=Math.PI*2-1e-6)return true;
-  const T=Math.PI*2,d=((ang-g.a0)%T+T)%T;
-  return d<=g.span+1e-9;
-}
-// 全環からランダム: 現在の出線角度を描いている環だけを候補にする（子側の接続用）
-function anyRingRadius(n,angle,o){
-  const L=n.ringList;
-  if(!L||!L.length)return o.lineFromEdge?n.r:0;
-  const la=angle-n.rot;
-  const cand=L.filter(g=>coversAngle(g,la));
-  return pick(cand.length?cand:[L[0]]).r;
-}
-// 全環からランダム（起点）: 実線で残す内輪だけを使い、モールス環の空隙から出さない
-function anySolidRingRadius(n,angle,o){
-  const L=n.ringList;
-  if(!L||!L.length)return o.lineFromEdge?n.r:0;
-  const la=angle-n.rot,solid=solidCount(o);
-  const cand=L.filter((g,i)=>L.length-i<=solid&&g.segs===null&&coversAngle(g,la));
-  return cand.length?pick(cand).r:null;
-}
-// 正三角の辺中点から法線方向に出す。法線は中心を通るので径向でもある
-function triAnchor(n,o,i){
-  const Rtri=n.core&&n.core.kind==='tri'?n.ringList[n.core.ring].r:0;
-  if(!Rtri||i>=3)return null;
-  const rot=n.triRot||0;
-  const normal=rot+Math.PI/2+i*Math.PI*2/3;
-  const ap=Rtri/2;
-  return {sx:n.x+Math.cos(normal)*ap,sy:n.y+Math.sin(normal)*ap,
-    dx:Math.cos(normal),dy:Math.sin(normal),reach:n.r-ap,anchor:'tri'};
-}
-function chooseAnchor(n,a,o,i){
-  const tri=triAnchor(n,o,i);
-  if(tri)return tri;
-  const sr=o.startRing==='any'?anySolidRingRadius(n,a,o):startRadius(n,o);
-  if(sr==null)return null;
-  return {sx:n.x+Math.cos(a)*sr,sy:n.y+Math.sin(a)*sr,
-    dx:Math.cos(a),dy:Math.sin(a),reach:n.r-sr,anchor:'ring'};
-}
-// 子ノード側の線端。三角心・三角環では core 円より内側に入れない
-function endRadius(n,angle,o){
-  let er;
-  if(n.ringList&&o.endAtRing){
-    er=o.startRing==='any'?anyRingRadius(n,angle,o):startRadius(n,o);
-  }else{
-    er=o.lineFromEdge?n.r:0;
-  }
-  if(n.core)er=Math.max(er,n.ringList[n.core.ring].r);
-  return er;
-}
-function bridgeOverlap(a0,a1,b0,b1){
-  const T=Math.PI*2;let best=null;
-  for(let k=-1;k<=1;k++){
-    const s=Math.max(a0,b0+k*T),e=Math.min(a1,b1+k*T);
-    if(e>s+1e-9&&(!best||e-s>best.e-best.s))best={s,e};
-  }
-  return best;
-}
-// 同心環の橋: 内環の実線円または横画から外環の横画へ。1文字につき1本
-function buildBridges(n,o){
-  const L=n.ringList;
-  if(!L||L.length<2||o.bridgeP<=0)return [];
-  const coreRing=n.core&&n.core.kind==='tri'?n.core.ring:null;
-  const coreReplace=!!(n.core&&n.core.replace);
-  const T=Math.PI*2,out=[];
-  for(let i=0;i<L.length-1;i++){
-    const outer=L[i],inner=L[i+1];
-    if(coreRing!==null&&(coreReplace?i+1>=coreRing:i+1>coreRing))continue;
-    if(!outer.segs||!outer.segs.length)continue;
-    const byLetter=new Map();
-    for(const sg of outer.segs){
-      if(!sg.dash)continue;
-      let arr=byLetter.get(sg.letter);
-      if(!arr){arr=[];byLetter.set(sg.letter,arr)}
-      arr.push(sg);
-    }
-    for(const arr of byLetter.values()){
-      if(o.bridgeP<1&&R()>=o.bridgeP)continue;
-      const start=Math.floor(R()*arr.length);
-      for(let j=0;j<arr.length;j++){
-        const sg=arr[(start+j)%arr.length];
-        let a=null;
-        if(inner.segs===null&&inner.span>=T-1e-6){
-          a=(sg.a0+sg.a1)/2;
-        }else if(inner.segs&&inner.segs.length){
-          let best=null;
-          for(const isg of inner.segs){
-            if(!isg.dash)continue;
-            const ov=bridgeOverlap(sg.a0,sg.a1,isg.a0,isg.a1);
-            if(ov&&(!best||ov.e-ov.s>best.e-best.s))best=ov;
-          }
-          if(best)a=(best.s+best.e)/2;
-        }
-        if(a!==null){out.push({r1:inner.r,r2:outer.r,a,accent:n.accent});break}
-      }
-    }
+const TAU=Math.PI*2;
+const normA=a=>((a%TAU)+TAU)%TAU;
+// 内側から k 番目の「見えている」環
+function visRings(n){return n.ringList?n.ringList.filter(g=>!g.hidden):[]}
+function innerRing(n,k){const L=visRings(n);return L[Math.max(0,L.length-k)]}
+const isFull=g=>g.span>=TAU-1e-6;
+// 全環ランダム: 実線で残る内輪のうち、角度 a に線がある環
+function solidCands(n,a,o){
+  const L=n.ringList,k=L.length,solid=solidCount(o),out=[];
+  for(let i=0;i<k;i++){
+    const g=L[i],fromIn=k-i;
+    if(fromIn>solid||g.hidden||g.segs)continue;
+    if(n.tri&&n.tri.mode==='ring'&&g.r<n.tri.R-1e-6)continue;
+    if(!isFull(g)){const d=normA(n.rot+0)-0;const la=normA(a-n.rot-g.a0);if(la>g.span)continue;void d}
+    out.push({g,k:visRings(n).length-visRings(n).indexOf(g)});
   }
   return out;
 }
+// モールス橋（専用乱数）
+let BR=Math.random;
+function overlap(a0,a1,b0,b1){for(let k=-2;k<=2;k++){const lo=Math.max(a0,b0+TAU*k),hi=Math.min(a1,b1+TAU*k);if(hi>lo)return[lo,hi]}return null}
+function computeBridges(n,o){
+  n.bridges=[];if(!o.bridgeOn||!n.ringList)return;
+  const L=n.ringList;
+  for(let i=0;i<L.length-1;i++){
+    const out=L[i],inn=L[i+1];
+    if(!out.segs||!out.segs.length||inn.hidden)continue;
+    if(n.tri&&n.tri.mode==='ring'&&(inn.r<n.tri.R-1e-6||out.r<n.tri.R-1e-6))continue;
+    let kind;
+    if(inn.segs)kind='morse';else if(isFull(inn))kind='full';else continue;
+    const byL=new Map();for(const sg of out.segs)if(sg.dash){if(!byL.has(sg.letter))byL.set(sg.letter,[]);byL.get(sg.letter).push(sg)}
+    for(const [,dashes] of byL){
+      if(BR()>=o.pBridge)continue;
+      const order=dashes.slice().sort(()=>BR()-.5);
+      for(const d of order){
+        if(kind==='full'){n.bridges.push({a:(d.a0+d.a1)/2,r0:inn.r,r1:out.r});break}
+        let hit=null;for(const e of inn.segs){if(!e.dash)continue;const ov=overlap(d.a0,d.a1,e.a0,e.a1);if(ov){hit=ov;break}}
+        if(hit){n.bridges.push({a:(hit[0]+hit[1])/2,r0:inn.r,r1:out.r});break}
+      }
+    }
+  }
+}
+// 三角化（多重円の上に）
+function applyTri(n,mode,o,rng){
+  const L=n.ringList,k=L.length;
+  const tri={mode,rot:rng()*TAU,R:0,fill:false};
+  if(mode==='core'){const g=L[k-1];g.hidden=true;g.segs=null;tri.R=g.r;tri.fill=n.fill;n.fill=false}
+  else{
+    const which=o.triWhich==='r'?(rng()<.5?1:2):+o.triWhich;const w=Math.min(which,k);
+    const g=L[k-w];g.segs=null;g.a0=0;g.span=TAU;tri.R=g.r;
+    if(w===2){L[k-1].r=Math.min(L[k-1].r,tri.R/2*0.88)}
+  }
+  n.tri=tri;
+}
+// 三角の各辺の法線方向（辺 e の中点）
+const triNormal=(n,e)=>n.tri.rot+Math.PI/3+e*TAU/3;
 
 function makeNode(x,y,r,depth,o,forceCircle){
-  let type;
+  let type,triMode=null;
   if(forceCircle)type=o.rootRings?'rings':(R()<.5?'circle':'rings');
-  else{
-    const tris=o.shapes.filter(s=>s==='triheart'||s==='tricore');
-    const others=o.shapes.filter(s=>s!=='triheart'&&s!=='tricore');
-    type=tris.length&&(!others.length||R()<o.pTri)?pick(tris):pick(others);
-  }
-  const triHeart=type==='triheart',triRing=type==='tricore';
-  if(triHeart||triRing)type='rings';
+  else if(o.tris.length){
+    if(o.otherEmpty||R()<o.pTri){triMode=o.tris.length===2?(R()<.5?o.tris[0]:o.tris[1]):o.tris[0];type='rings'}
+    else type=pick(o.shapes);
+  }else type=pick(o.shapes);
   const n={x,y,r,depth,type,rot:rnd(0,Math.PI*2),accent:R()<o.pAcc,fill:R()<o.pFill};
-  if(triHeart||triRing)n.triRot=rnd(0,Math.PI*2);
   if(type==='rings'||type==='mix'){
     const lo=Math.min(o.minRings,o.maxRings),hi=Math.max(o.minRings,o.maxRings,2);
     const k=rint(Math.max(2,lo),hi);
     const rs=[];for(let i=0;i<k;i++)rs.push(r*(1-i/k*rnd(.85,1)));
     // ringList: index0=最外周, 末尾=最内輪
     n.ringList=rs.map(rr=>({r:rr,a0:0,span:Math.PI*2,segs:null}));
-    if(triHeart){
-      // 最内輪を三角に置換する
-      n.core={kind:'tri',ring:k-1,replace:true};
-    }else if(triRing){
-      // 第一円・第二円のどちらかに三角を内接させる
-      const mode=o.triMode==='random'?pick(['first','second']):o.triMode;
-      if(mode==='second'&&k>=2){
-        // 第二内円の三角に第一内円が食い込まないよう、内接半径まで縮める
-        const first=n.ringList[k-1],coreR=n.ringList[k-2].r;
-        const ratio=(coreR/2)/first.r;
-        const loF=Math.min(.5,ratio),hiF=ratio;
-        first.r*=rnd(loF,hiF);
-      }
-      const idx=mode==='first'?k-1:k-2;
-      n.core={kind:'tri',ring:Math.max(0,Math.min(k-1,idx)),replace:false};
-    }
     if(type==='mix')n.ringList.forEach(g=>{if(R()<.55){g.a0=rnd(0,Math.PI*2);g.span=pick([Math.PI,Math.PI,Math.PI/2,Math.PI*1.5])}});
     if(o.morseOn){
       const solid=solidCount(o);
@@ -433,18 +420,147 @@ function makeNode(x,y,r,depth,o,forceCircle){
         }
       });
     }
-    if(o.bridgeOn)n.bridges=buildBridges(n,o);
   }
+  if(triMode)applyTri(n,triMode,o,R);
+  if(n.ringList)computeBridges(n,o);
   if(type==='semi'){n.flat=R()<.6}
   if(type==='square'||type==='dsq'){n.rot=pick([0,Math.PI/4,rnd(0,Math.PI/2)])}
   return n;
 }
 
+// ===== 読み取り符号 =====
+// パケット: [0xA5][flags][len][data...][crc16]  flags bit0=設定あり
+function crc16(bytes){let c=0xFFFF;for(const b of bytes){c^=b<<8;for(let i=0;i<8;i++)c=c&0x8000?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c}
+function makePacket(seed,settings){
+  const enc=new TextEncoder();const data=[...enc.encode(settings?seed+'\u001f'+settings:seed)].slice(0,255);
+  const body=[0xA5,settings?1:0,data.length,...data];const c=crc16(body);
+  const bytes=[...body,c>>8,c&255];const bits=[];for(const b of bytes)for(let i=7;i>=0;i--)bits.push((b>>i)&1);
+  return bits;
+}
+function parsePacket(bits){
+  for(let off=0;off+40<=bits.length;off++){ // 先頭がずれていても探す
+    const byte=i=>{let v=0;for(let k=0;k<8;k++)v=v<<1|(bits[off+i*8+k]|0);return v};
+    if(byte(0)!==0xA5)continue;const len=byte(2);if(off+(len+5)*8>bits.length)continue;
+    const body=[];for(let i=0;i<len+3;i++)body.push(byte(i));
+    const c=byte(len+3)<<8|byte(len+4);if(crc16(body)!==c)continue;
+    const txt=new TextDecoder().decode(new Uint8Array(body.slice(3)));
+    const [seed,settings]=(body[1]&1)?txt.split('\u001f'):[txt,''];
+    return{seed,settings:settings||'',bits:(len+5)*8};
+  }
+  return null;
+}
+// 既定値（ページ読み込み時）からの差分を文字列化
+let DEFAULTS={};
+const SKIP_IDS=['seed','lockSeed','live','budget','decFile','codeSettings'];
+function ctrlList(){return[...document.querySelectorAll('#side input[id],#side select[id]')].filter(el=>!SKIP_IDS.includes(el.id)&&el.type!=='file')}
+function ctrlVal(el){return el.type==='checkbox'?(el.checked?'1':'0'):el.value}
+function settingsDiff(){return ctrlList().map((el,i)=>[el,i]).filter(([el])=>ctrlVal(el)!==DEFAULTS[el.id]).map(([el,i])=>i.toString(36)+'='+ctrlVal(el)).join(';')}
+function applySettings(str){
+  for(const el of ctrlList()){const v=DEFAULTS[el.id];if(v==null)continue;if(el.type==='checkbox')el.checked=v==='1';else el.value=v}
+  const L=ctrlList();
+  for(const kv of (str||'').split(';')){if(!kv)continue;const i=kv.indexOf('=');const el=L[parseInt(kv.slice(0,i),36)];if(!el)continue;const v=kv.slice(i+1);if(el.type==='checkbox')el.checked=v==='1';else el.value=v}
+  document.querySelectorAll('input[type=range]').forEach(r=>{const v=$('v_'+r.id);if(v)v.textContent=r.value});
+}
+// 1環ぶんの符号化: 同期弧(7u) → [間隔u + 弧(0=1u,1=3u)]...
+function encodeRing(r,u,bits,from){
+  const L=r*TAU,segs=[];let pos=0,i=from;
+  segs.push({a0:0,a1:7*u/r,sync:true});pos=7*u;
+  while(i<bits.length){const len=bits[i]?3*u:u;if(pos+u+len>L-4*u)break;pos+=u;segs.push({a0:pos/r,a1:(pos+len)/r});pos+=len;i++}
+  return{segs,next:i};
+}
+const toBits=(v,n)=>{const b=[];for(let i=n-1;i>=0;i--)b.push((v>>i)&1);return b};
+const fromBits=b=>b.reduce((a,x)=>a*2+(x|0),0);
+function crc8bits(bits){let c=0;for(const bt of bits){const fb=((c>>7)&1)^bt;c=(c<<1)&255;if(fb)c^=7}return toBits(c,8)}
+// 断片: [magic4: 1011=向きあり/1010=向きなし][off12][n9][payload(向き3ビットを除く)][crc8]
+// crc8 は header + payload(向きビット込み) に対して
+const CH_OVER=4+12+10+8;
+function codeLayout(r,o){
+  const u=o.codeUnit,lwc=o.lw*o.codeLw,sp=Math.max(u*1.5,lwc*4,5);
+  const f1=Math.max(u*1.2,lwc*3,4),f2=f1+sp;const radii=[];
+  for(let x=f2+sp*1.2;x<=r+1e-6;x+=sp)radii.push(x);
+  const cap=radii.reduce((a,x)=>a+Math.max(0,Math.floor((x*TAU-11*u)/(4*u))),0);
+  return{u,sp,f1,f2,radii,cap};
+}
+// 図形 n を符号の担い手にする（多重円のみ）。C: 共有状態
+function makeCarrier(n,o,C){
+  if(n.tri)return false;
+  if(n.type!=='rings'&&!(o.codeConvert&&(n.type==='mix'||n.type==='circle')))return false;
+  let Ly=codeLayout(n.r,o);
+  if(n===C.root){const want=Math.max(o.codeRootR,n.r*(1+(o.codeBoost||0)));if(want>n.r){n.r=want;Ly=codeLayout(n.r,o)}}
+  const orientOK=o.codeOrient;
+  const pcap=Ly.cap-CH_OVER+(orientOK?3:0);
+  if(pcap<o.codeMin||C.total===0)return false;
+  let off=C.ptr,len=Math.min(pcap,(n===C.root&&o.codeBoost)?1023:o.codeMax,C.total-off,1023);
+  if(o.codeWhole&&pcap>=C.total&&C.total<=1023){off=0;len=C.total} // 入る図形には全文（この図形だけで読める）
+  const useOri=orientOK&&len>=3;
+  const payload=C.packet.slice(off,off+len);
+  const head=[1,0,1,useOri?1:0,...toBits(off,12),...toBits(len,10)];
+  const crc=crc8bits([...head,...payload]);
+  const stream=[...head,...(useOri?payload.slice(3):payload),...crc];
+  const rings=[{r:Ly.f1,a0:0,span:TAU,segs:null},{r:Ly.f2,a0:0,span:TAU,segs:null}];
+  let i=0;
+  for(const r of Ly.radii){
+    if(i<stream.length){const e=encodeRing(r,Ly.u,stream,i);rings.push({r,a0:0,span:TAU,segs:e.segs,code:true});i=e.next}
+    else rings.push({r,a0:0,span:TAU,segs:null}); // 余った環は実線（読み取りの終わりの印）
+  }
+  rings.reverse();
+  n.type='rings';n.ringList=rings;n.fill=false;n.core=undefined;n.bridges=[];
+  n.rot=useOri?fromBits(payload.slice(0,3))*Math.PI/4:0;
+  n.code={off,len};
+  for(let k=off;k<off+len;k++)C.cover[k]++;
+  if(!(o.codeWhole&&off===0&&len===C.total))C.ptr=(off+len)%C.total;C.list.push(n);
+  return true;
+}
+function codeInit(o,root){
+  const seed=$('seed').value||'0';
+  const settings=o.codeSettings?settingsDiff():'';
+  const packet=makePacket(seed,settings);
+  return{packet,total:packet.length,ptr:0,cover:new Uint16Array(packet.length),list:[],root,settings:!!settings};
+}
+function segHitsCircle(x1,y1,x2,y2,c,rad){const dx=x2-x1,dy=y2-y1,L=dx*dx+dy*dy||1;let t=((c.x-x1)*dx+(c.y-y1)*dy)/L;t=Math.max(0,Math.min(1,t));return Math.hypot(x1+t*dx-c.x,y1+t*dy-c.y)<rad}
+
+// 意味の指定を中央の個体に反映（専用乱数。指定なしなら何もしない）
+function applySemantics(n,o){
+  const S=o.sem;if(!S.state&&!S.work&&!S.core&&!S.motion)return;
+  if(!n.ringList)return;
+  const sr=mulberry(hashStr(($('seed').value||'0')+'#sem'));
+  if(S.state==='speak'&&!(n.tri&&n.tri.mode==='core')){n.tri=null;n.ringList.forEach(g=>g.hidden=false);
+    if(n.ringList.length<3){const L=n.ringList;L.push({r:L[L.length-1].r*.55,a0:0,span:TAU,segs:null})}
+    applyTri(n,'core',o,sr)}
+  const first=innerRing(n,1);
+  if(S.work==='yes'){first.segs=null;first.a0=0;first.span=TAU}
+  if(S.work==='no'){const unit=Math.max(.5,o.mDot);const save=R;R=sr;first.segs=morseArc(first.r,sr()*TAU,TAU,unit,o);R=save;first.span=TAU}
+  if(S.motion==='extend'&&visRings(n).length<3){const L=n.ringList;L.push({r:L[L.length-1].r*.55,a0:0,span:TAU,segs:null})}
+  if(S.core==='big'){n.core='big';n.fill=false;if(n.tri)n.tri.fill=false}
+  if(S.core==='small'){n.core='small';n.fill=false;if(n.tri)n.tri.fill=false}
+  if(S.core==='none'){n.core='none';n.fill=false;if(n.tri)n.tri.fill=false}
+  computeBridges(n,o);
+}
+// 図形から意味を読み解く
+function readNode(n,lines){
+  const out=[];
+  if(!n.ringList)return out;
+  if(n.tri&&n.tri.mode==='core')out.push('発言中・紹介中');
+  const f=innerRing(n,1);
+  if(f&&!f.segs&&isFull(f)&&!(n.tri&&n.tri.mode==='core'&&false))out.push('仕事');
+  const bigCore=n.core==='big'||n.fill||(n.tri&&n.tri.fill);
+  if(bigCore)out.push('不安定・高ぶり');
+  else if(n.core!=='none'&&n.type==='rings')out.push('喜び');
+  const ks=n.out||[];
+  if(ks.length===3){
+    if(ks.every(k=>k===1))out.push('前進中');
+    else if(ks.every(k=>k===2))out.push('伸長中');
+  }
+  return out;
+}
 function* generate(o,g){
-  const nodes=g.nodes,lines=g.lines,dots=g.dots;gridReset();MAXR=0;
-  const addNode=n=>{nodes.push(n);gridAdd(n,0);if(n.r>MAXR)MAXR=n.r;if(n.bridges&&n.bridges.length)g.bridges+=n.bridges.length};
+  const nodes=g.nodes,lines=g.lines,dots=g.dots;gridReset();MAXR=0;LGRID=new Map();
+  const pushLine=l=>{lines.push(l);lgAdd(l)};
+  const addNode=n=>{nodes.push(n);gridAdd(n,0);if(n.r>MAXR)MAXR=n.r};
   const cx=o.W/2,cy=o.H/2;
   const root=makeNode(cx,cy,rnd(o.rootMin,o.rootMax),0,o,true);
+  const C=o.codeOn?codeInit(o,root):null;g.code=C;
+  if(C)makeCarrier(root,o,C);else applySemantics(root,o);
   addNode(root);yield {k:"n",v:root};
   const queue=[root];let qi=0;
   while(qi<queue.length&&nodes.length<o.maxNodes&&lines.length<o.maxLines){
@@ -452,29 +568,66 @@ function* generate(o,g){
     if(p.depth>=o.maxDepth)continue;
     if(p!==root&&R()>o.pBranch)continue;
     let cnt=rint(o.branchMin,o.branchMax);
-    if(p.core)cnt=Math.min(cnt,3); // 三角からは各辺1本まで
     const base=rnd(0,Math.PI*2);
+    const motionK=(p===root&&o.sem.motion&&!o.codeOn)?(o.sem.motion==='forward'?1:2):0;
+    if(motionK)cnt=3;
+    if(p.tri)cnt=Math.min(cnt,3);
+    const freeEdges=p.tri?[0,1,2]:null;
+    p.out=p.out||[];
     for(let i=0;i<cnt;i++){
       if(lines.length>=o.maxLines)break;
       const regA=base+i/cnt*Math.PI*2;
       let placed=false;
-      const tries=o.noOverlap&&o.overlapMode==='retry'?14:1;
+      const tries=o.noOverlap&&o.overlapMode==='retry'?14:(motionK?8:1);
       for(let t=0;t<tries&&!placed;t++){
         const jitter=(1-o.regular)*Math.PI*(t?1:.5);
-        const a=(t?rnd(0,Math.PI*2):regA)+rnd(-jitter,jitter);
+        let a,edge=-1;
+        if(p.tri){ // 三角: 辺の中点から法線方向
+          if(!freeEdges.length){placed=true;break}
+          edge=freeEdges[t===0&&freeEdges.includes(i%3)?freeEdges.indexOf(i%3):Math.floor(R()*freeEdges.length)];
+          a=triNormal(p,edge);
+        }else if(motionK){a=base+i/3*TAU+(t?rnd(-.5,.5)*Math.min(1,t/4):0)}
+        else a=(t?rnd(0,Math.PI*2):regA)+rnd(-jitter,jitter);
         const sc=Math.pow(o.shrink,p.depth);
         const len=rnd(o.lenMin,o.lenMax)*sc;
-        const an=chooseAnchor(p,a,o,i);
-        if(!an)break;
-        const sx=an.sx,sy=an.sy;
-        let wantNode=nodes.length<o.maxNodes&&R()<o.pNode;
-        const cr=rnd(o.rMin,o.rMax)*sc;
-        const dist=an.reach+len+(wantNode?cr:0);
-        const ex=sx+an.dx*dist,ey=sy+an.dy*dist;
-        const lx=sx+an.dx*(an.reach+len),ly=sy+an.dy*(an.reach+len);
+        let sr,sk;
+        if(p.code&&o.codeGuard){sr=p.r+o.lw*2;sk=0}
+        else if(motionK){const g=innerRing(p,motionK);sr=g.r;sk=motionK}
+        else if(p.tri){sr=p.tri.R/2;sk=-1}
+        else if(o.startRing==='all'&&p.ringList){
+          const cs=solidCands(p,a,o);
+          if(!cs.length){placed=true;break} // 該当角度に実線内輪なし → この線は生成しない
+          const c=cs[Math.floor(R()*cs.length)];sr=c.g.r;sk=c.k;
+        }else{sr=startRadius(p,o,a);sk=LASTK}
+        const sx=p.x+Math.cos(a)*sr,sy=p.y+Math.sin(a)*sr;
+        let wantNode=nodes.length<o.maxNodes&&(R()<o.pNode||(motionK>0&&o.pNode>0));
+        const cr=rnd(o.rMin,o.rMax)*sc*(o.codeOn?o.codeScale:1);
+        // 線なしでくっつける
+        if(o.pAttach>0&&nodes.length<o.maxNodes&&R()<o.pAttach){
+          const d0=edgeDist(p,a,true)+cr*(1-o.attachIn);
+          const ax=p.x+Math.cos(a)*d0,ay=p.y+Math.sin(a)*d0;
+          if(o.inBounds&&(ax<cr||ay<cr||ax>o.W-cr||ay>o.H-cr))continue;
+          if(o.noOverlap&&overlaps(nodes,ax,ay,cr,o.gap,p))continue;
+          if(C&&o.codeGuard&&circleHitsLines(ax,ay,cr+o.codeUnit+o.lw*2,null))continue;
+          if(edge>=0)freeEdges.splice(freeEdges.indexOf(edge),1);
+          const n=makeNode(ax,ay,cr,p.depth+1,o);if(C)makeCarrier(n,o,C);
+          const d1=edgeDist(p,a,true)+edgeDist(n,a+Math.PI,true)*(1-o.attachIn);
+          n.x=p.x+Math.cos(a)*d1;n.y=p.y+Math.sin(a)*d1;n.attached=true;
+          addNode(n);queue.push(n);yield {k:"n",v:n};
+          placed=true;break;
+        }
+        const dist=p.r+len+(wantNode?cr:0);
+        const ex=p.x+Math.cos(a)*dist,ey=p.y+Math.sin(a)*dist;
+        const lx=p.x+Math.cos(a)*(p.r+len),ly=p.y+Math.sin(a)*(p.r+len);
         const margin=wantNode?cr:4;
         if(o.inBounds&&(ex<margin||ey<margin||ex>o.W-margin||ey>o.H-margin))continue;
         if(o.lineAvoid&&segHitsNode(nodes,sx,sy,lx,ly,[p]))continue;
+        if(C&&o.codeGuard){const tx=wantNode?ex-Math.cos(a)*cr:lx,ty=wantNode?ey-Math.sin(a)*cr:ly;let hit=false;
+          for(const c of C.list){if(c===p)continue;if(segHitsCircle(sx,sy,tx,ty,c,c.r+o.codeUnit+o.lw*2)){hit=true;break}}
+          if(hit)continue}
+        if(o.noCross){const tx=wantNode?ex-Math.cos(a)*cr:lx,ty=wantNode?ey-Math.sin(a)*cr:ly;if(crossesLines(sx,sy,tx,ty))continue}
+        // 符号モード: 新しい図形の円に既存の線がかかっていたら置かない
+        if(C&&o.codeGuard&&wantNode&&circleHitsLines(ex,ey,cr+o.codeUnit+o.lw*2,null))continue;
         if(wantNode&&o.noOverlap&&overlaps(nodes,ex,ey,cr,o.gap,null)){
           if(o.overlapMode==='retry')continue;
           if(o.overlapMode==='skip'){placed=true;break}
@@ -486,20 +639,15 @@ function* generate(o,g){
           placed=true;break;
         }
         const accent=R()<o.pAcc;
+        if(edge>=0)freeEdges.splice(freeEdges.indexOf(edge),1);
+        p.out.push(sk);
         if(wantNode){
-          const n=makeNode(ex,ey,cr,p.depth+1,o);
-          const back=Math.atan2(-an.dy,-an.dx);
-          const er=endRadius(n,back,o);
-          const drop=o.pDropLine>0&&RD()<o.pDropLine;
-          const ln={x1:sx,y1:sy,x2:ex-an.dx*er,y2:ey-an.dy*er,accent,drop,
-            src:p,dst:n,endR:er,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)};
-          if(drop)g.dropped++;
-          lines.push(ln);
+          const n=makeNode(ex,ey,cr,p.depth+1,o);if(C)makeCarrier(n,o,C);
+          const er=(n.code&&o.codeGuard)?n.r+o.lw*2:n.tri?n.tri.R:(n.ringList&&o.endAtRing)?startRadius(n,o):(o.lineFromEdge?edgeDist(n,a+Math.PI):0);
+          const ln={x1:sx,y1:sy,x2:ex-Math.cos(a)*er,y2:ey-Math.sin(a)*er,accent,child:true};pushLine(ln);
           addNode(n);queue.push(n);yield {k:"l",v:ln};yield {k:"n",v:n};
         }else{
-          const ln={x1:sx,y1:sy,x2:lx,y2:ly,accent,drop:false,
-            src:p,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)};
-          lines.push(ln);yield {k:"l",v:ln};
+          const ln={x1:sx,y1:sy,x2:lx,y2:ly,accent};pushLine(ln);yield {k:"l",v:ln};
           if(R()<o.pDot){const d={x:lx,y:ly,r:Math.max(2,o.lw*rnd(1.5,3)),accent};dots.push(d);yield {k:"d",v:d}}
         }
         placed=true;
@@ -515,17 +663,9 @@ function clearCanvas(o){
   ctx.lineCap='round';ctx.lineJoin='round';
 }
 const col=(o,a)=>a?o.acc:o.fg;
-function drawLine(o,l){if(l.drop)return;ctx.strokeStyle=col(o,l.accent);ctx.lineWidth=o.lw;ctx.lineCap='round';
+function drawLine(o,l){ctx.strokeStyle=col(o,l.accent);ctx.lineWidth=o.lw;ctx.lineCap='round';
   ctx.beginPath();ctx.moveTo(l.x1,l.y1);ctx.lineTo(l.x2,l.y2);ctx.stroke()}
 function drawDot(o,d){ctx.fillStyle=col(o,d.accent);ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill()}
-function triPath(rot,Rtri){
-  ctx.beginPath();
-  for(let i=0;i<3;i++){
-    const a=rot-Math.PI/2+i*Math.PI*2/3,x=Math.cos(a)*Rtri,y=Math.sin(a)*Rtri;
-    if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);
-  }
-  ctx.closePath();
-}
 function drawNode(o,n){
     const c=col(o,n.accent);ctx.lineCap='round';
 ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
@@ -536,14 +676,10 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
         ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill();break;
       case'rings':case'mix':{
         const L=n.ringList;
-        if(n.fill&&!n.core){const g=L[L.length-1];ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);if(g.span<Math.PI*2-1e-6)ctx.closePath();ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}
-        if(n.core&&n.core.kind==='tri'&&n.fill){
-          triPath(n.triRot-n.rot,L[n.core.ring].r);
-          ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1;
-        }
-        for(let ri=0;ri<L.length;ri++){
-          const g=L[ri];
-          if(n.core&&n.core.replace&&ri===n.core.ring)continue;
+        if(n.fill){const g=L[L.length-1];ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);if(g.span<Math.PI*2-1e-6)ctx.closePath();ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}
+        for(const g of L){
+          if(g.hidden)continue;
+          if(g.code){ctx.lineWidth=o.lw*o.codeLw;ctx.lineCap='butt';for(const sg of g.segs){ctx.beginPath();ctx.arc(0,0,g.r,sg.a0,sg.a1);ctx.stroke()}ctx.lineWidth=o.lw;ctx.lineCap='round';continue}
           if(g.segs){
             ctx.lineWidth=o.lw*o.mLw;ctx.lineCap=o.mCap?'round':'butt';
             for(const sg of g.segs){
@@ -553,19 +689,14 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
             ctx.lineWidth=o.lw;ctx.lineCap='round';
           }else{ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);ctx.stroke()}
         }
-        if(n.bridges&&n.bridges.length){
-          ctx.lineWidth=o.lw*o.mLw;ctx.lineCap='round';
-          for(const b of n.bridges){
-            ctx.beginPath();ctx.moveTo(Math.cos(b.a)*b.r1,Math.sin(b.a)*b.r1);
-            ctx.lineTo(Math.cos(b.a)*b.r2,Math.sin(b.a)*b.r2);ctx.stroke();
-          }
-          ctx.lineWidth=o.lw;
+        if(n.tri){ // 三角（世界座標の角度に合わせる）
+          const tr=n.tri;ctx.beginPath();
+          for(let e=0;e<3;e++){const va=tr.rot+e*TAU/3-n.rot;const px=Math.cos(va)*tr.R,py=Math.sin(va)*tr.R;e?ctx.lineTo(px,py):ctx.moveTo(px,py)}
+          ctx.closePath();if(tr.fill){ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}ctx.stroke();
         }
-        if(n.core&&n.core.kind==='tri'){
-          ctx.lineWidth=o.lw;ctx.lineCap='round';
-          triPath(n.triRot-n.rot,L[n.core.ring].r);ctx.stroke();
-        }
-        if(n.type==='rings'&&!n.core){ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill()}
+        if(n.bridges)for(const b of n.bridges){ctx.beginPath();ctx.moveTo(Math.cos(b.a)*b.r0,Math.sin(b.a)*b.r0);ctx.lineTo(Math.cos(b.a)*b.r1,Math.sin(b.a)*b.r1);ctx.stroke()}
+        if(n.core==='big'){const g=visRings(n);const rr=Math.max(o.lw*3,n.tri?n.tri.R/2*0.85:g[g.length-1].r*0.75);ctx.beginPath();ctx.arc(0,0,rr,0,TAU);ctx.fill()}
+        else if(n.type==='rings'&&n.core!=='none'){ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill()}
         break}
       case'semi':ctx.beginPath();ctx.arc(0,0,n.r,0,Math.PI);if(n.flat)ctx.closePath();finish();break;
       case'square':{const s=n.r/Math.SQRT2;ctx.beginPath();ctx.rect(-s,-s,s*2,s*2);finish();break}
@@ -574,32 +705,235 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
     }
     ctx.restore();
 }
+function drawDecode(o,g){
+  const fs=o.decSize;ctx.save();ctx.font=`${fs}px system-ui,"Hiragino Sans","Noto Sans JP",sans-serif`;ctx.textAlign='center';ctx.textBaseline='top';
+  for(const n of g.nodes){
+    const rd=readNode(n);if(!rd.length)continue;
+    const t=rd.join('・');const w=ctx.measureText(t).width+fs*.6;const x=n.x,y=n.y+n.r+fs*.4;
+    ctx.globalAlpha=.78;ctx.fillStyle=o.transparent?'#000':o.bg;ctx.fillRect(x-w/2,y-fs*.15,w,fs*1.3);ctx.globalAlpha=1;
+    ctx.fillStyle=o.acc;ctx.fillText(t,x,y);
+  }
+  ctx.restore();
+}
+// ===== デコーダ =====
+const dcv=$('dcv'),dctx=dcv.getContext('2d');
+let DEC={img:null,center:null,result:null};
+function showDecode(on){cv.hidden=on;dcv.hidden=!on}
+function loadDecodeSource(src){ // src: canvas or image
+  const w=src.naturalWidth||src.width,h=src.naturalHeight||src.height;const k=Math.min(1,4000/Math.max(w,h));
+  dcv.width=Math.round(w*k);dcv.height=Math.round(h*k);
+  dctx.clearRect(0,0,dcv.width,dcv.height);dctx.drawImage(src,0,0,dcv.width,dcv.height);
+  DEC.img=dctx.getImageData(0,0,dcv.width,dcv.height);DEC.center=null;showDecode(true);decode();
+}
+function inkMask(img){
+  const {width:W,height:H,data:d}=img;const m=new Uint8Array(W*H);
+  // 背景色 = 外周ピクセルの中央値
+  const rs=[],gs=[],bs=[],as=[];
+  for(let x=0;x<W;x+=4){for(const y of[0,H-1]){const i=(y*W+x)*4;rs.push(d[i]);gs.push(d[i+1]);bs.push(d[i+2]);as.push(d[i+3])}}
+  for(let y=0;y<H;y+=4){for(const x of[0,W-1]){const i=(y*W+x)*4;rs.push(d[i]);gs.push(d[i+1]);bs.push(d[i+2]);as.push(d[i+3])}}
+  const med=a=>a.sort((p,q)=>p-q)[a.length>>1];const br=med(rs),bg=med(gs),bb=med(bs),ba=med(as);
+  if(ba<128){for(let i=0,j=0;j<W*H;i+=4,j++)m[j]=d[i+3]>110?1:0;return m}
+  const dist=new Uint16Array(W*H);const hist=new Float64Array(766);
+  for(let i=0,j=0;j<W*H;i+=4,j++){const v=Math.abs(d[i]-br)+Math.abs(d[i+1]-bg)+Math.abs(d[i+2]-bb);dist[j]=v;hist[v]++}
+  // 大津法でしきい値
+  let tot=W*H,sum=0;for(let t=0;t<766;t++)sum+=t*hist[t];let sB=0,wB=0,best=0,th=90;
+  for(let t=0;t<766;t++){wB+=hist[t];if(!wB)continue;const wF=tot-wB;if(!wF)break;sB+=t*hist[t];const mB=sB/wB,mF=(sum-sB)/wF;const bv=wB*wF*(mB-mF)*(mB-mF);if(bv>best){best=bv;th=t}}
+  th=Math.max(40,Math.min(th,300));
+  for(let j=0;j<W*H;j++)m[j]=dist[j]>th?1:0;
+  return m;
+}
+// 中心候補 (cx,cy) まわりを解析: 基準環2本 → 符号環のビット列
+function analyzeAt(cx,cy,at,W,H){
+  const atF=(x,y)=>{const x0=Math.floor(x),y0=Math.floor(y),fx=x-x0,fy=y-y0;
+    const v=at(x0,y0)*(1-fx)*(1-fy)+at(x0+1,y0)*fx*(1-fy)+at(x0,y0+1)*(1-fx)*fy+at(x0+1,y0+1)*fx*fy;return v>=0.5};
+  const lim=Math.min(W,H);
+  for(let it=0;it<5;it++){
+    const pts=[];
+    for(let k=0;k<180;k++){const a=k/180*TAU,ca=Math.cos(a),sa=Math.sin(a);let r=0;
+      while(r<40&&at(cx+ca*r,cy+sa*r))r++;
+      let s=-1;for(;r<120;r++){if(at(cx+ca*r,cy+sa*r)){s=r;break}}
+      if(s<0)continue;let e=s;while(e<s+30&&at(cx+ca*e,cy+sa*e))e++;const rr=(s+e)/2;pts.push([cx+ca*rr,cy+sa*rr,rr])}
+    if(pts.length<60)return null;
+    const rmed=pts.map(p=>p[2]).sort((a,b)=>a-b)[pts.length>>1];
+    const good=pts.filter(p=>Math.abs(p[2]-rmed)<Math.max(2,rmed*.12));if(good.length<60)return null;
+    let sx=0,sy=0,sxx=0,syy=0,sxy=0,sxz=0,syz=0,sz=0;const n=good.length;
+    for(const [x,y] of good){const z=x*x+y*y;sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;sxz+=x*z;syz+=y*z;sz+=z}
+    const A=[[sxx,sxy,sx],[sxy,syy,sy],[sx,sy,n]],B=[sxz,syz,sz];
+    const det=M=>M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1])-M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0])+M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+    const D=det(A);if(Math.abs(D)<1e-9)return null;
+    const col=(M,c,v)=>M.map((row,i)=>row.map((x,j)=>j===c?v[i]:x));
+    const ncx=det(col(A,0,B))/D/2,ncy=det(col(A,1,B))/D/2;const mv=Math.hypot(ncx-cx,ncy-cy);
+    if(mv>60)return null;cx=ncx;cy=ncy;if(mv<.15)break;
+  }
+  // 半径方向の被覆率の「山」で環を拾う（環どうしが近くても谷で分ける）
+  const NA=720,cov=[0,0];const peaks=[];let valley=1,solids=0,step=0,dotEnd=0;
+  const maxR=Math.min(Math.floor(Math.min(cx,cy,W-cx,H-cy))-2,3000);
+  const covAt=r=>{let c=0;for(let k=0;k<NA;k++){const a=k/NA*TAU;if(at(cx+Math.cos(a)*r,cy+Math.sin(a)*r))c++}return c/NA};
+  for(let r=2;r<=maxR;r++){
+    cov[r]=covAt(r);const q=r-1;
+    if(!dotEnd){if(cov[r]<0.06)dotEnd=r;else if(r>60)return null;continue} // 中心の点を抜けるまで
+    if(q>=2){
+      const v=cov[q];valley=Math.min(valley,v);
+      if(v>0.025&&v>=cov[q-1]&&v>cov[r]){
+        // 放物線で山の位置を補間
+        const a1=cov[q-1],a2=cov[r],den=a1-2*v+a2;const rr=q+(den?0.5*(a1-a2)/den:0);
+        const prev=peaks[peaks.length-1];
+        if(prev&&(rr-prev.r<2.2||valley>0.8*Math.min(prev.mx,v))){if(v>prev.mx){prev.r=rr;prev.mx=v}}
+        else if(rr>dotEnd){peaks.push({r:rr,mx:v});if(v>0.9)solids++;
+          if(peaks.length>=2){const d=rr-peaks[peaks.length-2].r;step=step?Math.min(step,d):d}}
+        valley=1;
+      }
+    }
+    if(r>150&&solids<2)return null;
+    if(peaks.length>=3&&!(peaks[0].mx>0.9&&peaks[1].mx>0.9))return null;
+    if(solids>=2&&step&&r-peaks[peaks.length-1].r>step*2.5+4)break;
+  }
+  if(peaks.length<3||peaks[0].mx<0.9||peaks[1].mx<0.9)return null;
+  const bands=peaks;
+  const codeBands=[];
+  for(let i=2;i<bands.length;i++){const x=bands[i];if(x.mx>0.95||x.mx<0.025)break;
+    // 線の太さ（被覆率が山の半分以上ある幅）の内側だけを読む
+    const ri=Math.round(x.r);let lo=ri,hi=ri;while(lo>2&&cov[lo-1]>x.mx*.5)lo--;while(hi+1<cov.length&&cov[hi+1]>x.mx*.5)hi++;
+    const dn=Math.min(x.r-bands[i-1].r,i+1<bands.length?bands[i+1].r-x.r:1e9);
+    x.half=Math.max(0.5,Math.min(dn*0.28,(hi-lo+1)*0.3));codeBands.push(x)}
+  if(!codeBands.length)return null;
+  const ringBits=[];let syncA=null;
+  for(const cb of codeBands){
+    const r=cb.r,N=Math.max(360,Math.ceil(TAU*r*2));const half=cb.half;
+    const on=new Uint8Array(N);
+    for(let k=0;k<N;k++){const a=k/N*TAU,ca=Math.cos(a),sa=Math.sin(a);for(let dr=-half;dr<=half+1e-6;dr+=Math.max(.25,half/2)){if(atF(cx+ca*(r+dr),cy+sa*(r+dr))){on[k]=1;break}}}
+    const st=on.indexOf(0);if(st<0){ringBits.push([]);continue}
+    const runs=[];let cur=null;
+    for(let t=0;t<N;t++){const k=(st+t)%N;if(on[k]){if(!cur)cur={s:t,len:0};cur.len++}else if(cur){runs.push(cur);cur=null}}
+    if(cur)runs.push(cur);if(!runs.length){ringBits.push([]);continue}
+    const pxPer=TAU*r/N;runs.forEach(x=>x.px=x.len*pxPer);
+    const sync=runs.reduce((a,x)=>x.px>a.px?x:a,runs[0]);const u=sync.px/7;const si=runs.indexOf(sync);
+    if(syncA==null)syncA=((st+sync.s)%N)/N*TAU;
+    const bits=[];
+    for(let t=1;t<runs.length;t++){const x=runs[(si+t)%runs.length];if(x.px<u*.45)continue;if(x.px>u*5)break;bits.push(x.px<u*2?0:1)}
+    ringBits.push(bits);
+  }
+  return{cx,cy,f:[bands[0].r,bands[1].r],codeBands,ringBits,syncA};
+}
+// 断片を解釈
+function parseChunk(an){
+  const b=an.ringBits.flat();if(b.length<CH_OVER)return null;
+  if(b[0]!==1||b[1]!==0||b[2]!==1)return null;
+  const ori=b[3]===1,off=fromBits(b.slice(4,16)),len=fromBits(b.slice(16,26));
+  const ringLen=len-(ori?3:0);if(ringLen<0||26+ringLen+8>b.length)return null;
+  const sector=Math.round((((an.syncA%TAU)+TAU)%TAU)/(Math.PI/4))%8;
+  const payload=[...(ori?toBits(sector,3):[]),...b.slice(26,26+ringLen)];
+  const crc=b.slice(26+ringLen,34+ringLen);const ok=crc8bits([...b.slice(0,26),...payload]).every((x,i)=>x===crc[i]);
+  return ok?{off,len,payload,ori}:null;
+}
+function findCandidates(m,W,H){
+  const seen=new Uint8Array(W*H),out=[];const stack=new Int32Array(W*H);
+  for(let i=0;i<W*H;i++){
+    if(!m[i]||seen[i])continue;
+    let sp=0,area=0,x0=1e9,y0=1e9,x1=-1,y1=-1,sx=0,sy=0;stack[sp++]=i;seen[i]=1;let big=false;
+    while(sp){const j=stack[--sp];const x=j%W,y=(j/W)|0;area++;sx+=x;sy+=y;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      if(x1-x0>60||y1-y0>60)big=true;
+      for(const q of[j-1,j+1,j-W,j+W]){if(q<0||q>=W*H)continue;if((q===j-1&&x===0)||(q===j+1&&x===W-1))continue;if(m[q]&&!seen[q]){seen[q]=1;stack[sp++]=q}}}
+    if(big)continue;const w=x1-x0+1,h=y1-y0+1;
+    if(area<3||w>40||h>40)continue;if(Math.abs(w-h)>Math.max(2,.35*Math.max(w,h)))continue;if(area/(w*h)<.5)continue;
+    out.push([sx/area,sy/area]);
+  }
+  return out;
+}
+function decode(){
+  if(!DEC.img)return;
+  const t0=performance.now();
+  const W=DEC.img.width,H=DEC.img.height,m=inkMask(DEC.img);
+  const at=(x,y)=>{x|=0;y|=0;return x>=0&&y>=0&&x<W&&y<H?m[y*W+x]:0};
+  const cands=findCandidates(m,W,H);
+  if(DEC.center)cands.unshift(DEC.center);cands.push([W/2,H/2]);
+  const found=[];
+  for(const [x,y] of cands){
+    if(found.some(f=>Math.hypot(f.cx-x,f.cy-y)<4))continue;
+    const an=analyzeAt(x,y,at,W,H);if(!an)continue;
+    if(found.some(f=>Math.hypot(f.cx-an.cx,f.cy-an.cy)<4))continue;
+    an.chunk=parseChunk(an);found.push(an);
+  }
+  // 断片を組み立て（重複は多数決）
+  const v0=new Uint16Array(4096),v1=new Uint16Array(4096);
+  for(const f of found)if(f.chunk){const c=f.chunk;c.payload.forEach((bt,i)=>{const k=c.off+i;if(k<4096)(bt?v1:v0)[k]++})}
+  const bits=[];for(let k=0;k<4096;k++){if(!v0[k]&&!v1[k])break;bits.push(v1[k]>v0[k]?1:0)}
+  const res=parsePacket(bits);
+  DEC.result=res;
+  // 表示
+  dctx.putImageData(DEC.img,0,0);dctx.save();
+  const lw=Math.max(1.5,W/800);dctx.lineWidth=lw;dctx.font=`${Math.max(11,W/90)}px system-ui,sans-serif`;dctx.textAlign='center';
+  for(const f of found){
+    const R=f.codeBands[f.codeBands.length-1].r;
+    dctx.strokeStyle='#4fd1ff';dctx.beginPath();dctx.arc(f.cx,f.cy,f.f[1],0,TAU);dctx.stroke();
+    dctx.strokeStyle=f.chunk?'#5be37a':'#ff6b6b';dctx.setLineDash([6,4]);dctx.beginPath();dctx.arc(f.cx,f.cy,R+lw*3,0,TAU);dctx.stroke();dctx.setLineDash([]);
+    if(f.syncA!=null){dctx.strokeStyle='#ff4fd8';dctx.beginPath();dctx.moveTo(f.cx,f.cy);dctx.lineTo(f.cx+Math.cos(f.syncA)*(R+lw*6),f.cy+Math.sin(f.syncA)*(R+lw*6));dctx.stroke()}
+    if(f.chunk){dctx.fillStyle='#5be37a';dctx.fillText(`${f.chunk.off}–${f.chunk.off+f.chunk.len-1}`,f.cx,f.cy+R+lw*6+12)}
+  }
+  dctx.restore();
+  const ok=found.filter(f=>f.chunk).length;
+  const total=res?res.bits:null;
+  const have=[];{let s0=-1;for(let k=0;k<=4096;k++){const h=k<4096&&(v0[k]||v1[k]);if(h&&s0<0)s0=k;if(!h&&s0>=0){have.push(`${s0}–${k-1}`);s0=-1}}}
+  const lines=[`候補 ${cands.length} 点 → 符号らしき図形 ${found.length} 個 / 読めた断片 ${ok} 個`,`読めた範囲（ビット）: ${have.join(', ')||'なし'}`,`先頭から続けて組めた: ${bits.length}${total?' / 必要 '+total:''}（${Math.round(performance.now()-t0)} ms）`];
+  if(res){lines.push('',`✔ 読み取りました`,`シード: ${res.seed}`,res.settings?`設定: ${res.settings.split(';').length} 項目`:'設定: なし（現在の設定で再生成）')}
+  else if(ok&&!bits.length)lines.push('','✘ 断片は読めましたが、データの先頭部分（0 ビット目〜）を持つ図形が画像に入っていません。データは複数の図形に分けて刻まれているので、切り抜かずに画像全体を読ませてください。');
+  else if(ok)lines.push('','✘ 断片が足りません。画像全体を読ませるか、見落とした図形の中心をクリックしてください。');
+  else lines.push('','✘ 読み取れませんでした。符号を刻んだ図形が見つからないか、CRC が合いません。読めなかった図形は赤で表示しています。');
+  $('decOut').textContent=lines.join('\n');$('decRegen').disabled=!res;
+}
+dcv.addEventListener('click',e=>{const r=dcv.getBoundingClientRect();const k=dcv.width/r.width;DEC.center=[(e.clientX-r.left)*k,(e.clientY-r.top)*k];decode()});
+$('decSelf').onclick=()=>loadDecodeSource(cv);
+$('decFileBtn').onclick=()=>$('decFile').click();
+$('decFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{loadDecodeSource(im);URL.revokeObjectURL(im.src)};im.onerror=()=>{$('decOut').textContent='画像を開けませんでした。PNG か JPEG を選んでください。'};im.src=URL.createObjectURL(f);e.target.value=''};
+$('decBack').onclick=()=>showDecode(false);
+$('decRegen').onclick=()=>{const r=DEC.result;if(!r)return;if(r.settings)applySettings(r.settings);$('seed').value=r.seed;$('lockSeed').checked=true;showDecode(false);run(false)};
 let job=0;
 function run(newSeed){
   if(newSeed&&!$('lockSeed').checked)$('seed').value=Math.random().toString(36).slice(2,10);
-  const seed=$('seed').value||'0';
-  R=mulberry(hashStr(seed));
-  RD=mulberry(hashStr(seed+'#drop'));
+  R=mulberry(hashStr($('seed').value||'0'));
   const o=cfg();const my=++job;
+  // 中央の個体には毎回シードから意味を割り当てる
+  {const sr=mulberry(hashStr(($('seed').value||'0')+'#meaning'));const pk=a=>a[Math.floor(sr()*a.length)];
+   o.sem={state:pk(['speak','']),work:pk(['yes','yes','no']),core:pk(['big','small','small','none']),motion:pk(['forward','extend',''])};}
+  // 符号: 全ビットが載るまで中央を大きくして試算（決定的なので再生成でも同じ結果）
+  if(o.codeOn&&o.codeFit){
+    const sd=$('seed').value||'0';
+    for(let k=0;k<=24;k++){
+      o.codeBoost=k*0.2;
+      R=mulberry(hashStr(sd));BR=mulberry(hashStr(sd+'#bridge'));
+      const gg={nodes:[],lines:[],dots:[]};for(const _ of generate(o,gg));
+      if(gg.code&&gg.code.cover.every(v=>v>0)){if(k===0)o.codeBoost=0;break}
+    }
+    R=mulberry(hashStr(sd));
+  }
   clearCanvas(o);
-  const g={nodes:[],lines:[],dots:[],dropped:0,bridges:0};
+  const g={nodes:[],lines:[],dots:[]};
   const it=generate(o,g);
-  window.__bloom={o,g};
   const live=$('live').checked,budget=+$('budget').value;
-  const stat=done=>{
-    const shown=g.lines.length-g.dropped;
-    const dropTxt=g.dropped?`（ドロップ ${g.dropped}）`:'';
-    const bridgeTxt=g.bridges?` / 橋 ${g.bridges}`:'';
-    $('stat').textContent=`図形 ${g.nodes.length} / 線 ${shown}${dropTxt} / 点 ${g.dots.length}${bridgeTxt}`+(done?'':'  … 生成中');
+  BR=mulberry(hashStr(($('seed').value||'0')+'#bridge'));
+  const DR=mulberry(hashStr(($('seed').value||'0')+'#drop'));
+  let shownL=0,dropped=0;
+  const stat=done=>{const br=g.nodes.reduce((a,n)=>a+(n.bridges?n.bridges.length:0),0);
+    $('stat').textContent=`図形 ${g.nodes.length} / 線 表示 ${shownL}・ドロップ ${dropped}（計 ${g.lines.length}） / 橋 ${br} / 点 ${g.dots.length}`+(done?'':'  … 生成中')};
+  const finish=()=>{
+    stat(true);$('gen').textContent='生成';
+    const C=g.code;
+    if(!C){$('codeInfo').textContent='';}
+    else{let mn=Infinity,mx=0,miss=0;for(const v of C.cover){mn=Math.min(mn,v);mx=Math.max(mx,v);if(!v)miss++}
+      const tot=C.list.reduce((a,n)=>a+n.code.len,0);
+      $('codeInfo').textContent=`データ ${C.total} ビット（${C.total/8-5} バイト${C.settings?'・設定込み':''}）\n符号を持つ図形 ${C.list.length} 個 / 載せた量 ${tot} ビット\n`+
+        (miss?`✘ 容量不足: ${miss} ビットが載っていません。図形数・半径を増やすか短点を短く`:`✔ 全ビット収録・最小 ${mn} 重（冗長度）`)+(o.codeUnit<o.lw*o.codeLw*2?'\n※短点が線の太さに比べて短く、読み取りにくい':'');}
   };
   const step=()=>{
     if(my!==job)return;
     const t0=performance.now();
     while(true){
       const r=it.next();
-      if(r.done){stat(true);$('gen').textContent='生成';return}
+      if(r.done){finish();return}
       const e=r.value;
-      if(e.k==='n')drawNode(o,e.v);else if(e.k==='l')drawLine(o,e.v);else drawDot(o,e.v);
+      if(e.k==='n')drawNode(o,e.v);
+      else if(e.k==='l'){if(e.v.child&&o.pDrop>0&&DR()<o.pDrop){dropped++;e.v.dropped=true}else{shownL++;drawLine(o,e.v)}}
+      else drawDot(o,e.v);
       if(performance.now()-t0>budget)break;
     }
     stat(false);
@@ -621,6 +955,7 @@ $('dl').onclick=()=>{
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)},'image/png');
 };
 addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='INPUT'){e.preventDefault();run(true)}});
+for(const el of ctrlList())DEFAULTS[el.id]=ctrlVal(el);
 run(true);
 </script>
 </body>
