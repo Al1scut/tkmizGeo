@@ -72,6 +72,9 @@ button:hover{filter:brightness(1.15)}
   <div class="row"><label>線の終端に点 %</label><span class="val" id="v_pDot"></span><input type="range" id="pDot" min="0" max="100" value="40"></div>
   <div class="row"><label>角度の等間隔度 %</label><span class="val" id="v_regular"></span><input type="range" id="regular" min="0" max="100" value="50"></div>
 
+  <h2>ドロップアウト</h2>
+  <div class="row"><label>親子線ドロップアウト %</label><span class="val" id="v_pDropLine"></span><input type="range" id="pDropLine" min="0" max="100" value="0"></div>
+
   <h2>図形の種類</h2>
   <div class="shapes">
     <label class="chk"><input type="checkbox" id="s_circle" checked>円</label>
@@ -80,7 +83,18 @@ button:hover{filter:brightness(1.15)}
     <label class="chk"><input type="checkbox" id="s_mix" checked>円＋半円ミックス</label>
     <label class="chk"><input type="checkbox" id="s_square" checked>正方形</label>
     <label class="chk"><input type="checkbox" id="s_dsq" checked>二重正方形</label>
+    <label class="chk"><input type="checkbox" id="s_triheart">三角心</label>
+    <label class="chk"><input type="checkbox" id="s_tricore">三角環</label>
   </div>
+
+  <h2>正三角</h2>
+  <div class="row"><label>三角の出現率 %</label><span class="val" id="v_pTri"></span><input type="range" id="pTri" min="0" max="100" value="20"></div>
+  <div class="row"><label>三角環</label><span></span>
+    <select id="triMode" style="grid-column:1/3">
+      <option value="first">第一円（内側から1番目）</option>
+      <option value="second">第二円（内側から2番目）</option>
+      <option value="random" selected>ランダム（両方）</option>
+    </select></div>
 
   <h2>重なり</h2>
   <label class="chk"><input type="checkbox" id="noOverlap" checked>線の先に既存の図形があれば重ねない</label>
@@ -110,6 +124,7 @@ button:hover{filter:brightness(1.15)}
       <option value="1">第一内輪</option>
       <option value="2" selected>第二内輪</option>
       <option value="12">第一・第二内輪からランダム</option>
+      <option value="any">全環からランダム（各線）</option>
       <option value="edge">最外周</option>
       <option value="center">中心</option>
     </select></div>
@@ -135,6 +150,11 @@ button:hover{filter:brightness(1.15)}
   <label class="chk"><input type="checkbox" id="mCap" checked>端を丸める</label>
   <div class="row"><label>文字列をモールス化（空=ランダム）</label><span></span>
     <input type="text" id="mText" placeholder="例: SOS HELLO" style="grid-column:1/3"></div>
+
+  <h2>モールス橋</h2>
+  <label class="chk"><input type="checkbox" id="bridgeOn">モールス間ブリッジ（同心環）</label>
+  <div class="row"><label>ブリッジ確率 %</label><span class="val" id="v_bridgeP"></span><input type="range" id="bridgeP" min="0" max="100" value="100"></div>
+
   <div id="stat"></div>
 </div>
 <div id="main"><canvas id="cv"></canvas></div>
@@ -148,7 +168,7 @@ ranges.forEach(r=>{const v=$('v_'+r.id);const f=()=>v&&(v.textContent=r.value);f
 // seeded RNG (mulberry32)
 function hashStr(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-let R=Math.random;
+let R=Math.random,RD=Math.random;
 const rnd=(a,b)=>a+R()*(b-a);
 const rint=(a,b)=>Math.floor(rnd(a,b+1));
 const pick=a=>a[Math.floor(R()*a.length)];
@@ -160,13 +180,16 @@ function cfg(){
     rootMin:n('rootMin'),rootMax:n('rootMax'),rMin:n('rMin'),rMax:n('rMax'),shrink:n('shrink')/100,
     lenMin:n('lenMin'),lenMax:n('lenMax'),pNode:n('pNode')/100,pBranch:n('pBranch')/100,pDot:n('pDot')/100,
     regular:n('regular')/100,noOverlap:c('noOverlap'),overlapMode:$('overlapMode').value,gap:n('gap'),
+    pDropLine:n('pDropLine')/100,
     lineAvoid:c('lineAvoid'),inBounds:c('inBounds'),bg:$('bgc').value,transparent:c('transparent'),
     fg:$('fgc').value,acc:$('acc').value,pAcc:n('pAcc')/100,lw:n('lw'),pFill:n('pFill')/100,lineFromEdge:c('lineFromEdge'),
     startRing:$('startRing').value,endAtRing:c('endAtRing'),rootRings:c('rootRings'),minRings:n('minRings'),
+    triMode:$('triMode').value,pTri:n('pTri')/100,
     morseOn:c('morseOn'),solidInner:n('solidInner'),solidFollow:c('solidFollow'),pMorse:n('pMorse')/100,
     mDot:n('mDot'),mDash:n('mDash'),mGap:n('mGap'),mLGap:n('mLGap'),mWGap:n('mWGap'),mDashP:n('mDashP')/100,
     mWordP:n('mWordP')/100,mLw:n('mLw'),mScale:n('mScale')/100,mRound:c('mRound'),mCap:c('mCap'),mText:$('mText').value,
-    shapes:['circle','rings','semi','mix','square','dsq'].filter(s=>c('s_'+s))};
+    bridgeOn:c('bridgeOn'),bridgeP:n('bridgeP')/100,
+    shapes:['circle','rings','semi','mix','square','dsq','triheart','tricore'].filter(s=>c('s_'+s))};
   const sw=(a,b)=>{if(o[a]>o[b])[o[a],o[b]]=[o[b],o[a]]};
   sw('branchMin','branchMax');sw('rootMin','rootMax');sw('rMin','rMax');sw('lenMin','lenMax');
   if(!o.shapes.length)o.shapes=['circle'];
@@ -225,7 +248,7 @@ function morseArc(r,a0,span,unit,o){
   const segs=[];const L=r*span;if(L<unit*2)return segs;
   const txt=o.mText.trim()?textTokens(o.mText):null;
   let ti=txt?rint(0,txt.length-1):0;
-  let pos=0,pendingGap=0;
+  let pos=0,pendingGap=0,letter=0,wrap=false;
   const nextLetterRandom=()=>{const s=[...randomLetter(o)];const r2=R()<o.mWordP?'w':'l';return [...s.flatMap((e,i)=>i?[e]:[e]),r2]};
   let buf=[];
   const nextTok=()=>{
@@ -235,15 +258,16 @@ function morseArc(r,a0,span,unit,o){
   let prevEl=false,guard=0;
   while(pos<L&&guard++<100000){
     let t=nextTok();
-    if(t.startsWith&&t.startsWith('__wrap_')){t=t.slice(7);if(t==='.'||t==='-'){/* 文末の後に語間 */}}
-    if(t==='l'){pendingGap=o.mLGap*unit;prevEl=false;continue}
-    if(t==='w'){pendingGap=o.mWGap*unit;prevEl=false;continue}
+    if(t.startsWith&&t.startsWith('__wrap_')){t=t.slice(7);wrap=true}
+    if(t==='l'){pendingGap=o.mLGap*unit;prevEl=false;letter++;continue}
+    if(t==='w'){pendingGap=o.mWGap*unit;prevEl=false;letter++;continue}
     const gap=prevEl?o.mGap*unit:pendingGap;pendingGap=0;
     const len=t==='-'?o.mDash*unit:unit;
     const s=pos+gap,e=s+len;
     if(e>L-(o.mGap*unit))break;
-    segs.push({a0:a0+s/r,a1:a0+e/r,dot:t==='.'});
+    segs.push({a0:a0+s/r,a1:a0+e/r,dot:t==='.',dash:t==='-',letter});
     pos=e;prevEl=true;
+    if(wrap){letter++;wrap=false}
     if(txt&&ti%txt.length===0){pendingGap=o.mWGap*unit;prevEl=false}
   }
   return segs;
@@ -262,15 +286,141 @@ function startRadius(n,o){
   return o.lineFromEdge?n.r:0;
 }
 
+// 環の局部角が描画区間に含まれるか（span が 2π を跨ぐ場合も考慮）
+function coversAngle(g,ang){
+  if(g.span>=Math.PI*2-1e-6)return true;
+  const T=Math.PI*2,d=((ang-g.a0)%T+T)%T;
+  return d<=g.span+1e-9;
+}
+// 全環からランダム: 現在の出線角度を描いている環だけを候補にする（子側の接続用）
+function anyRingRadius(n,angle,o){
+  const L=n.ringList;
+  if(!L||!L.length)return o.lineFromEdge?n.r:0;
+  const la=angle-n.rot;
+  const cand=L.filter(g=>coversAngle(g,la));
+  return pick(cand.length?cand:[L[0]]).r;
+}
+// 全環からランダム（起点）: 実線で残す内輪だけを使い、モールス環の空隙から出さない
+function anySolidRingRadius(n,angle,o){
+  const L=n.ringList;
+  if(!L||!L.length)return o.lineFromEdge?n.r:0;
+  const la=angle-n.rot,solid=solidCount(o);
+  const cand=L.filter((g,i)=>L.length-i<=solid&&g.segs===null&&coversAngle(g,la));
+  return cand.length?pick(cand).r:null;
+}
+// 正三角の辺中点から法線方向に出す。法線は中心を通るので径向でもある
+function triAnchor(n,o,i){
+  const Rtri=n.core&&n.core.kind==='tri'?n.ringList[n.core.ring].r:0;
+  if(!Rtri||i>=3)return null;
+  const rot=n.triRot||0;
+  const normal=rot+Math.PI/2+i*Math.PI*2/3;
+  const ap=Rtri/2;
+  return {sx:n.x+Math.cos(normal)*ap,sy:n.y+Math.sin(normal)*ap,
+    dx:Math.cos(normal),dy:Math.sin(normal),reach:n.r-ap,anchor:'tri'};
+}
+function chooseAnchor(n,a,o,i){
+  const tri=triAnchor(n,o,i);
+  if(tri)return tri;
+  const sr=o.startRing==='any'?anySolidRingRadius(n,a,o):startRadius(n,o);
+  if(sr==null)return null;
+  return {sx:n.x+Math.cos(a)*sr,sy:n.y+Math.sin(a)*sr,
+    dx:Math.cos(a),dy:Math.sin(a),reach:n.r-sr,anchor:'ring'};
+}
+// 子ノード側の線端。三角心・三角環では core 円より内側に入れない
+function endRadius(n,angle,o){
+  let er;
+  if(n.ringList&&o.endAtRing){
+    er=o.startRing==='any'?anyRingRadius(n,angle,o):startRadius(n,o);
+  }else{
+    er=o.lineFromEdge?n.r:0;
+  }
+  if(n.core)er=Math.max(er,n.ringList[n.core.ring].r);
+  return er;
+}
+function bridgeOverlap(a0,a1,b0,b1){
+  const T=Math.PI*2;let best=null;
+  for(let k=-1;k<=1;k++){
+    const s=Math.max(a0,b0+k*T),e=Math.min(a1,b1+k*T);
+    if(e>s+1e-9&&(!best||e-s>best.e-best.s))best={s,e};
+  }
+  return best;
+}
+// 同心環の橋: 内環の実線円または横画から外環の横画へ。1文字につき1本
+function buildBridges(n,o){
+  const L=n.ringList;
+  if(!L||L.length<2||o.bridgeP<=0)return [];
+  const coreRing=n.core&&n.core.kind==='tri'?n.core.ring:null;
+  const coreReplace=!!(n.core&&n.core.replace);
+  const T=Math.PI*2,out=[];
+  for(let i=0;i<L.length-1;i++){
+    const outer=L[i],inner=L[i+1];
+    if(coreRing!==null&&(coreReplace?i+1>=coreRing:i+1>coreRing))continue;
+    if(!outer.segs||!outer.segs.length)continue;
+    const byLetter=new Map();
+    for(const sg of outer.segs){
+      if(!sg.dash)continue;
+      let arr=byLetter.get(sg.letter);
+      if(!arr){arr=[];byLetter.set(sg.letter,arr)}
+      arr.push(sg);
+    }
+    for(const arr of byLetter.values()){
+      if(o.bridgeP<1&&R()>=o.bridgeP)continue;
+      const start=Math.floor(R()*arr.length);
+      for(let j=0;j<arr.length;j++){
+        const sg=arr[(start+j)%arr.length];
+        let a=null;
+        if(inner.segs===null&&inner.span>=T-1e-6){
+          a=(sg.a0+sg.a1)/2;
+        }else if(inner.segs&&inner.segs.length){
+          let best=null;
+          for(const isg of inner.segs){
+            if(!isg.dash)continue;
+            const ov=bridgeOverlap(sg.a0,sg.a1,isg.a0,isg.a1);
+            if(ov&&(!best||ov.e-ov.s>best.e-best.s))best=ov;
+          }
+          if(best)a=(best.s+best.e)/2;
+        }
+        if(a!==null){out.push({r1:inner.r,r2:outer.r,a,accent:n.accent});break}
+      }
+    }
+  }
+  return out;
+}
+
 function makeNode(x,y,r,depth,o,forceCircle){
-  const type=forceCircle?(o.rootRings?'rings':(R()<.5?'circle':'rings')):pick(o.shapes);
+  let type;
+  if(forceCircle)type=o.rootRings?'rings':(R()<.5?'circle':'rings');
+  else{
+    const tris=o.shapes.filter(s=>s==='triheart'||s==='tricore');
+    const others=o.shapes.filter(s=>s!=='triheart'&&s!=='tricore');
+    type=tris.length&&(!others.length||R()<o.pTri)?pick(tris):pick(others);
+  }
+  const triHeart=type==='triheart',triRing=type==='tricore';
+  if(triHeart||triRing)type='rings';
   const n={x,y,r,depth,type,rot:rnd(0,Math.PI*2),accent:R()<o.pAcc,fill:R()<o.pFill};
+  if(triHeart||triRing)n.triRot=rnd(0,Math.PI*2);
   if(type==='rings'||type==='mix'){
     const lo=Math.min(o.minRings,o.maxRings),hi=Math.max(o.minRings,o.maxRings,2);
     const k=rint(Math.max(2,lo),hi);
     const rs=[];for(let i=0;i<k;i++)rs.push(r*(1-i/k*rnd(.85,1)));
     // ringList: index0=最外周, 末尾=最内輪
     n.ringList=rs.map(rr=>({r:rr,a0:0,span:Math.PI*2,segs:null}));
+    if(triHeart){
+      // 最内輪を三角に置換する
+      n.core={kind:'tri',ring:k-1,replace:true};
+    }else if(triRing){
+      // 第一円・第二円のどちらかに三角を内接させる
+      const mode=o.triMode==='random'?pick(['first','second']):o.triMode;
+      if(mode==='second'&&k>=2){
+        // 第二内円の三角に第一内円が食い込まないよう、内接半径まで縮める
+        const first=n.ringList[k-1],coreR=n.ringList[k-2].r;
+        const ratio=(coreR/2)/first.r;
+        const loF=Math.min(.5,ratio),hiF=ratio;
+        first.r*=rnd(loF,hiF);
+      }
+      const idx=mode==='first'?k-1:k-2;
+      n.core={kind:'tri',ring:Math.max(0,Math.min(k-1,idx)),replace:false};
+    }
     if(type==='mix')n.ringList.forEach(g=>{if(R()<.55){g.a0=rnd(0,Math.PI*2);g.span=pick([Math.PI,Math.PI,Math.PI/2,Math.PI*1.5])}});
     if(o.morseOn){
       const solid=solidCount(o);
@@ -283,6 +433,7 @@ function makeNode(x,y,r,depth,o,forceCircle){
         }
       });
     }
+    if(o.bridgeOn)n.bridges=buildBridges(n,o);
   }
   if(type==='semi'){n.flat=R()<.6}
   if(type==='square'||type==='dsq'){n.rot=pick([0,Math.PI/4,rnd(0,Math.PI/2)])}
@@ -291,7 +442,7 @@ function makeNode(x,y,r,depth,o,forceCircle){
 
 function* generate(o,g){
   const nodes=g.nodes,lines=g.lines,dots=g.dots;gridReset();MAXR=0;
-  const addNode=n=>{nodes.push(n);gridAdd(n,0);if(n.r>MAXR)MAXR=n.r};
+  const addNode=n=>{nodes.push(n);gridAdd(n,0);if(n.r>MAXR)MAXR=n.r;if(n.bridges&&n.bridges.length)g.bridges+=n.bridges.length};
   const cx=o.W/2,cy=o.H/2;
   const root=makeNode(cx,cy,rnd(o.rootMin,o.rootMax),0,o,true);
   addNode(root);yield {k:"n",v:root};
@@ -300,7 +451,8 @@ function* generate(o,g){
     const p=queue[qi++];
     if(p.depth>=o.maxDepth)continue;
     if(p!==root&&R()>o.pBranch)continue;
-    const cnt=rint(o.branchMin,o.branchMax);
+    let cnt=rint(o.branchMin,o.branchMax);
+    if(p.core)cnt=Math.min(cnt,3); // 三角からは各辺1本まで
     const base=rnd(0,Math.PI*2);
     for(let i=0;i<cnt;i++){
       if(lines.length>=o.maxLines)break;
@@ -312,13 +464,14 @@ function* generate(o,g){
         const a=(t?rnd(0,Math.PI*2):regA)+rnd(-jitter,jitter);
         const sc=Math.pow(o.shrink,p.depth);
         const len=rnd(o.lenMin,o.lenMax)*sc;
-        const sr=startRadius(p,o);
-        const sx=p.x+Math.cos(a)*sr,sy=p.y+Math.sin(a)*sr;
+        const an=chooseAnchor(p,a,o,i);
+        if(!an)break;
+        const sx=an.sx,sy=an.sy;
         let wantNode=nodes.length<o.maxNodes&&R()<o.pNode;
         const cr=rnd(o.rMin,o.rMax)*sc;
-        const dist=p.r+len+(wantNode?cr:0);
-        const ex=p.x+Math.cos(a)*dist,ey=p.y+Math.sin(a)*dist;
-        const lx=p.x+Math.cos(a)*(p.r+len),ly=p.y+Math.sin(a)*(p.r+len);
+        const dist=an.reach+len+(wantNode?cr:0);
+        const ex=sx+an.dx*dist,ey=sy+an.dy*dist;
+        const lx=sx+an.dx*(an.reach+len),ly=sy+an.dy*(an.reach+len);
         const margin=wantNode?cr:4;
         if(o.inBounds&&(ex<margin||ey<margin||ex>o.W-margin||ey>o.H-margin))continue;
         if(o.lineAvoid&&segHitsNode(nodes,sx,sy,lx,ly,[p]))continue;
@@ -335,11 +488,18 @@ function* generate(o,g){
         const accent=R()<o.pAcc;
         if(wantNode){
           const n=makeNode(ex,ey,cr,p.depth+1,o);
-          const er=(n.ringList&&o.endAtRing)?startRadius(n,o):(o.lineFromEdge?cr:0);
-          const ln={x1:sx,y1:sy,x2:ex-Math.cos(a)*er,y2:ey-Math.sin(a)*er,accent};lines.push(ln);
+          const back=Math.atan2(-an.dy,-an.dx);
+          const er=endRadius(n,back,o);
+          const drop=o.pDropLine>0&&RD()<o.pDropLine;
+          const ln={x1:sx,y1:sy,x2:ex-an.dx*er,y2:ey-an.dy*er,accent,drop,
+            src:p,dst:n,endR:er,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)};
+          if(drop)g.dropped++;
+          lines.push(ln);
           addNode(n);queue.push(n);yield {k:"l",v:ln};yield {k:"n",v:n};
         }else{
-          const ln={x1:sx,y1:sy,x2:lx,y2:ly,accent};lines.push(ln);yield {k:"l",v:ln};
+          const ln={x1:sx,y1:sy,x2:lx,y2:ly,accent,drop:false,
+            src:p,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)};
+          lines.push(ln);yield {k:"l",v:ln};
           if(R()<o.pDot){const d={x:lx,y:ly,r:Math.max(2,o.lw*rnd(1.5,3)),accent};dots.push(d);yield {k:"d",v:d}}
         }
         placed=true;
@@ -355,9 +515,17 @@ function clearCanvas(o){
   ctx.lineCap='round';ctx.lineJoin='round';
 }
 const col=(o,a)=>a?o.acc:o.fg;
-function drawLine(o,l){ctx.strokeStyle=col(o,l.accent);ctx.lineWidth=o.lw;ctx.lineCap='round';
+function drawLine(o,l){if(l.drop)return;ctx.strokeStyle=col(o,l.accent);ctx.lineWidth=o.lw;ctx.lineCap='round';
   ctx.beginPath();ctx.moveTo(l.x1,l.y1);ctx.lineTo(l.x2,l.y2);ctx.stroke()}
 function drawDot(o,d){ctx.fillStyle=col(o,d.accent);ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill()}
+function triPath(rot,Rtri){
+  ctx.beginPath();
+  for(let i=0;i<3;i++){
+    const a=rot-Math.PI/2+i*Math.PI*2/3,x=Math.cos(a)*Rtri,y=Math.sin(a)*Rtri;
+    if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);
+  }
+  ctx.closePath();
+}
 function drawNode(o,n){
     const c=col(o,n.accent);ctx.lineCap='round';
 ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
@@ -368,8 +536,14 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
         ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill();break;
       case'rings':case'mix':{
         const L=n.ringList;
-        if(n.fill){const g=L[L.length-1];ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);if(g.span<Math.PI*2-1e-6)ctx.closePath();ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}
-        for(const g of L){
+        if(n.fill&&!n.core){const g=L[L.length-1];ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);if(g.span<Math.PI*2-1e-6)ctx.closePath();ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}
+        if(n.core&&n.core.kind==='tri'&&n.fill){
+          triPath(n.triRot-n.rot,L[n.core.ring].r);
+          ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1;
+        }
+        for(let ri=0;ri<L.length;ri++){
+          const g=L[ri];
+          if(n.core&&n.core.replace&&ri===n.core.ring)continue;
           if(g.segs){
             ctx.lineWidth=o.lw*o.mLw;ctx.lineCap=o.mCap?'round':'butt';
             for(const sg of g.segs){
@@ -379,7 +553,19 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
             ctx.lineWidth=o.lw;ctx.lineCap='round';
           }else{ctx.beginPath();ctx.arc(0,0,g.r,g.a0,g.a0+g.span);ctx.stroke()}
         }
-        if(n.type==='rings'){ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill()}
+        if(n.bridges&&n.bridges.length){
+          ctx.lineWidth=o.lw*o.mLw;ctx.lineCap='round';
+          for(const b of n.bridges){
+            ctx.beginPath();ctx.moveTo(Math.cos(b.a)*b.r1,Math.sin(b.a)*b.r1);
+            ctx.lineTo(Math.cos(b.a)*b.r2,Math.sin(b.a)*b.r2);ctx.stroke();
+          }
+          ctx.lineWidth=o.lw;
+        }
+        if(n.core&&n.core.kind==='tri'){
+          ctx.lineWidth=o.lw;ctx.lineCap='round';
+          triPath(n.triRot-n.rot,L[n.core.ring].r);ctx.stroke();
+        }
+        if(n.type==='rings'&&!n.core){ctx.beginPath();ctx.arc(0,0,Math.max(1.5,o.lw*1.2),0,Math.PI*2);ctx.fill()}
         break}
       case'semi':ctx.beginPath();ctx.arc(0,0,n.r,0,Math.PI);if(n.flat)ctx.closePath();finish();break;
       case'square':{const s=n.r/Math.SQRT2;ctx.beginPath();ctx.rect(-s,-s,s*2,s*2);finish();break}
@@ -391,13 +577,21 @@ ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=o.lw;
 let job=0;
 function run(newSeed){
   if(newSeed&&!$('lockSeed').checked)$('seed').value=Math.random().toString(36).slice(2,10);
-  R=mulberry(hashStr($('seed').value||'0'));
+  const seed=$('seed').value||'0';
+  R=mulberry(hashStr(seed));
+  RD=mulberry(hashStr(seed+'#drop'));
   const o=cfg();const my=++job;
   clearCanvas(o);
-  const g={nodes:[],lines:[],dots:[]};
+  const g={nodes:[],lines:[],dots:[],dropped:0,bridges:0};
   const it=generate(o,g);
+  window.__bloom={o,g};
   const live=$('live').checked,budget=+$('budget').value;
-  const stat=done=>$('stat').textContent=`図形 ${g.nodes.length} / 線 ${g.lines.length} / 点 ${g.dots.length}`+(done?'':'  … 生成中');
+  const stat=done=>{
+    const shown=g.lines.length-g.dropped;
+    const dropTxt=g.dropped?`（ドロップ ${g.dropped}）`:'';
+    const bridgeTxt=g.bridges?` / 橋 ${g.bridges}`:'';
+    $('stat').textContent=`図形 ${g.nodes.length} / 線 ${shown}${dropTxt} / 点 ${g.dots.length}${bridgeTxt}`+(done?'':'  … 生成中');
+  };
   const step=()=>{
     if(my!==job)return;
     const t0=performance.now();
