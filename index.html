@@ -162,7 +162,8 @@ button:hover{filter:brightness(1.15)}
 <script>
 const GLOBALS = {
   MAX_HEIGHT: 8000, // referenced line 49 div
-  MAX_WIDTH : 8000  // referenced line 50 div
+  MAX_WIDTH : 8000, // referenced line 50 div
+  MAX_RADIUS:    0
 };
 
 const $=id=>document.getElementById(id);
@@ -186,7 +187,18 @@ const rint=(a,b)=>Math.floor(rnd(a,b+1));
 const pick=a=>a[Math.floor(R()*a.length)];
 
 function cfg(){
-  const n=id=>+$(id).value, c=id=>$(id).checked;
+  /*
+  HTMLの要素をそれぞれnumberもしくはbooleanに変換したオブジェクトを返します。
+  */
+  const n = id => {
+    const num = Number($(id).value)
+    if (Number.isNaN(num)) {
+      throw new Error(`num expected valid number but got NaN for "${id}"`);
+      return;
+    }
+    return num;
+  };
+  const c = id => $(id).checked;
   const o = {
     W:Math.min(GLOBALS.MAX_WIDTH , Math.max(64,n("W"))),
     H:Math.min(GLOBALS.MAX_HEIGHT, Math.max(64,n("H"))),
@@ -264,6 +276,7 @@ function gridAdd(n,pad){
   const x0=Math.floor((n.x-n.r-pad)/CELL),x1=Math.floor((n.x+n.r+pad)/CELL),y0=Math.floor((n.y-n.r-pad)/CELL),y1=Math.floor((n.y+n.r+pad)/CELL);
   for(let i=x0;i<=x1;i++)for(let j=y0;j<=y1;j++){const k=i+','+j;let c=GRID.get(k);if(!c)GRID.set(k,c=[]);c.push(n)}
 }
+
 function gridQuery(x0,y0,x1,y1){
   const out=new Set();
   const cx0=Math.floor(x0/CELL),cx1=Math.floor(x1/CELL),cy0=Math.floor(y0/CELL),cy1=Math.floor(y1/CELL);
@@ -271,15 +284,16 @@ function gridQuery(x0,y0,x1,y1){
   for(let i=cx0;i<=cx1;i++)for(let j=cy0;j<=cy1;j++){const c=GRID.get(i+','+j);if(c)for(const n of c)out.add(n)}
   return out;
 }
-let MAXR=0;
+
 function overlaps(nodes,x,y,r,gap,ignore){
-  const pad=r+gap+MAXR;
+  const pad=r+gap+GLOBALS.MAX_RADIUS;
   const cand=gridQuery(x-pad,y-pad,x+pad,y+pad)||nodes;
   for(const n of cand){if(n===ignore)continue;if(Math.hypot(n.x-x,n.y-y)<n.r+r+gap)return true}
   return false;
 }
+
 function segHitsNode(nodes,x1,y1,x2,y2,skip){
-  const cand=gridQuery(Math.min(x1,x2)-MAXR,Math.min(y1,y2)-MAXR,Math.max(x1,x2)+MAXR,Math.max(y1,y2)+MAXR)||nodes;
+  const cand=gridQuery(Math.min(x1,x2)-GLOBALS.MAX_RADIUS,Math.min(y1,y2)-GLOBALS.MAX_RADIUS,Math.max(x1,x2)+GLOBALS.MAX_RADIUS,Math.max(y1,y2)+GLOBALS.MAX_RADIUS)||nodes;
   for(const n of cand){
     if(skip.includes(n))continue;
     const dx=x2-x1,dy=y2-y1,L=dx*dx+dy*dy||1;
@@ -544,20 +558,22 @@ function makeNode(x,y,r,depth,o,forceCircle){
 }
 
 function* generate(config,g){
-  const nodes = g.nodes, lines=g.lines,dots=g.dots;gridReset();
-  MAXR=0;
-  const addNode=n=>{
+  const nodes = g.nodes, lines = g.lines, dots = g.dots;
+  gridReset();
+  GLOBALS.MAX_RADIUS = 0;
+  const addNode = n => {
     nodes.push(n);
     gridAdd(n,0);
-    if(n.r > MAXR){
-      MAXR=n.r;
+    if(n.r > GLOBALS.MAX_RADIUS){
+      GLOBALS.MAX_RADIUS = n.r;
       if(n.bridges&&n.bridges.length){g.bridges+=n.bridges.length;}
     }
   };
-  const cx=config.W/2,cy=config.H/2;
+  const cx = config.W/2, cy = config.H/2;
   const root = makeNode(cx,cy,rnd(config.rootMin,config.rootMax),0,config,true);
   addNode(root);
   yield {k:"n",v:root};
+
   const queue=[root];
   let qi=0;
   while(qi < queue.length && nodes.length < config.maxNodes && lines.length < config.maxLines){
@@ -568,47 +584,56 @@ function* generate(config,g){
     if(p.core)cnt=Math.min(cnt,3); // 三角からは各辺1本まで
     const base=rnd(0,Math.PI*2);
     for(let i=0;i<cnt;i++){
-      if(lines.length>=config.maxLines)break;
+      if(lines.length>=config.maxLines){break};
       const regA=base+i/cnt*Math.PI*2;
-      let placed=false;
-      const tries=config.noOverlap&&config.overlapMode==='retry'?14:1;
-      for(let t=0;t<tries&&!placed;t++){
-        const jitter=(1-config.regular)*Math.PI*(t?1:.5);
-        const a=(t?rnd(0,Math.PI*2):regA)+rnd(-jitter,jitter);
-        const sc=Math.pow(config.shrink,p.depth);
-        const len=rnd(config.lenMin,config.lenMax)*sc;
-        const an=chooseAnchor(p,a,config,i);
+
+      let placed = false;
+      const tries = config.noOverlap && config.overlapMode === 'retry' ? 14 : 1;
+      for(let t = 0; t < tries && !placed; t++){
+        const jitter = (1-config.regular) * Math.PI * (t ? 1 :.5);
+        const a = (t?rnd(0,Math.PI*2):regA)+rnd(-jitter,jitter);
+        const sc = Math.pow(config.shrink,p.depth);
+        const len = rnd(config.lenMin,config.lenMax)*sc;
+        const an = chooseAnchor(p,a,config,i);
         if(!an)break;
-        const sx=an.sx,sy=an.sy;
-        let wantNode=nodes.length<config.maxNodes&&R()<config.pNode;
-        const cr=rnd(config.rMin,config.rMax)*sc;
-        const dist=an.reach+len+(wantNode?cr:0);
-        const ex=sx+an.dx*dist,ey=sy+an.dy*dist;
-        const lx=sx+an.dx*(an.reach+len),ly=sy+an.dy*(an.reach+len);
-        const margin=wantNode?cr:4;
-        if(config.inBounds&&(ex<margin||ey<margin||ex>config.W-margin||ey>config.H-margin))continue;
-        if(config.lineAvoid&&segHitsNode(nodes,sx,sy,lx,ly,[p]))continue;
-        if(wantNode&&config.noOverlap&&overlaps(nodes,ex,ey,cr,config.gap,null)){
-          if(config.overlapMode==='retry')continue;
-          if(config.overlapMode==='skip'){placed=true;break}
+
+        const sx = an.sx,sy = an.sy;
+        let wantNode = nodes.length<config.maxNodes && R() < config.pNode;
+        const cr = rnd(config.rMin,config.rMax) * sc;
+        const dist = an.reach+len+(wantNode?cr:0);
+        const ex = sx + an.dx * dist, ey = sy + an.dy * dist;
+        const lx = sx + an.dx * (an.reach+len),ly = sy + an.dy * (an.reach + len);
+        const margin = wantNode ? cr : 4;
+        if(config.inBounds && (ex < margin || ey < margin || ex > config.W-margin || ey > config.H-margin))continue;
+        if(config.lineAvoid && segHitsNode(nodes,sx,sy,lx,ly,[p]))continue;
+        if(wantNode && config.noOverlap && overlaps(nodes,ex,ey,cr,config.gap,null)){
+          if(config.overlapMode==='retry') continue;
+          if(config.overlapMode==='skip'){
+            // placed=true; // because "break" ends "for(let t = 0; t < tries && !placed; t++)"
+            break;
+          }
           wantNode=false; // line only
         }
         // 線だけの場合も終端が既存図形内なら重ねない
-        if(!wantNode&&config.noOverlap&&overlaps(nodes,lx,ly,2,0,p)){
+        if(!wantNode && config.noOverlap && overlaps(nodes, lx, ly, 2, 0, p)){
           if(config.overlapMode==='retry')continue;
-          placed=true;break;
+          // placed=true; // because "break" ends "for(let t = 0; t < tries && !placed; t++)"
+          break;
         }
-        const accent=R()<config.pAcc;
+        const accent = R() < config.pAcc;
         if(wantNode){
-          const n=makeNode(ex,ey,cr,p.depth+1,config);
-          const back=Math.atan2(-an.dy,-an.dx);
-          const er=endRadius(n,back,config);
-          const drop=config.pDropLine>0&&RD()<config.pDropLine;
-          const ln={x1:sx,y1:sy,x2:ex-an.dx*er,y2:ey-an.dy*er,accent,drop,
+          const n = makeNode(ex,ey,cr,p.depth+1,config);
+          const back = Math.atan2(-an.dy,-an.dx);
+          const er = endRadius(n,back,config);
+          const drop = config.pDropLine>0&&RD()<config.pDropLine;
+          const ln = {x1:sx,y1:sy,x2:ex-an.dx*er,y2:ey-an.dy*er,accent,drop,
             src:p,dst:n,endR:er,anchor:an.anchor,startR:Math.hypot(sx-p.x,sy-p.y)};
           if(drop)g.dropped++;
           lines.push(ln);
-          addNode(n);queue.push(n);yield {k:"l",v:ln};yield {k:"n",v:n};
+          addNode(n);
+          queue.push(n);
+          yield {k:"l",v:ln};
+          yield {k:"n",v:n};
         }else{
           const ln = {
             x1:sx,y1:sy,x2:lx,y2:ly,accent,drop:false,
@@ -627,14 +652,34 @@ function* generate(config,g){
 function clearCanvas(o){
   cv.width=o.W;cv.height=o.H;
   ctx.clearRect(0,0,o.W,o.H);
-  if(!o.transparent){ctx.fillStyle=o.bg;ctx.fillRect(0,0,o.W,o.H)}
-  ctx.lineCap='round';ctx.lineJoin='round';
+  if(!o.transparent){
+    ctx.fillStyle=o.bg;
+    ctx.fillRect(0,0,o.W,o.H)
+  }
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
 }
 
 const col=(o,a)=>a?o.acc:o.fg;
-function drawLine(o,l){if(l.drop)return;ctx.strokeStyle=col(o,l.accent);ctx.lineWidth=o.lw;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(l.x1,l.y1);ctx.lineTo(l.x2,l.y2);ctx.stroke()}
-function drawDot(o,d){ctx.fillStyle=col(o,d.accent);ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill()}
+
+function drawLine(o,l){
+  if(l.drop)return;
+  ctx.strokeStyle=col(o,l.accent);
+  ctx.lineWidth=o.lw;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(l.x1,l.y1);
+  ctx.lineTo(l.x2,l.y2);
+  ctx.stroke();
+}
+
+function drawDot(o,d){
+  ctx.fillStyle = col(o,d.accent);
+  ctx.beginPath();
+  ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+  ctx.fill();
+}
+
 function triPath(rot,Rtri){
   ctx.beginPath();
   for(let i=0;i<3;i++){
@@ -753,7 +798,11 @@ function run(newSeed){
   const g={nodes:[],lines:[],dots:[],dropped:0,bridges:0};
   const it = generate(o,g);
   window.__bloom={o,g};
-  const live=$('live').checked,budget=+$('budget').value;
+  const live = $('live').checked, budget = Number($('budget').value);
+  if (Number.isNaN(budget)){
+    throw new Error("Budget is NaN");
+  }
+
   const stat = done => {
     const shown=g.lines.length-g.dropped;
     const dropTxt=g.dropped?`（ドロップ ${g.dropped}）`:'';
@@ -768,7 +817,7 @@ function run(newSeed){
       const result=it.next();
       if(result.done){stat(true);$('gen').textContent='生成';return}
       const e=result.value;
-      if(e.k==='n'){
+      if(e.k === 'n'){
         drawNode(o,e.v);
       }else if(e.k==='l'){
         drawLine(o,e.v);
@@ -800,9 +849,9 @@ function main() {
   $('dl').onclick=()=>{
     cv.toBlob(
       b => {
-        const a=document.createElement('a');
-        a.href=URL.createObjectURL(b);
-        a.download=`geometric_${$('seed').value}.png`;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download =`geometric_${$('seed').value}.png`;
         document.body.appendChild(a);
         a.click();
         setTimeout(
@@ -819,8 +868,9 @@ function main() {
   addEventListener(
     'keydown',
     e => {
-      if(e.code==='Space'&&e.target.tagName!=='INPUT')
-      {e.preventDefault();run(true)}
+      if(e.code==='Space' && e.target.tagName !== 'INPUT'){
+        e.preventDefault();run(true)
+      }
     }
   );
   run(true);
